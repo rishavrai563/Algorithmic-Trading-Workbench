@@ -8,15 +8,24 @@ import BacktestResults from './pages/BacktestResults'
 import Explore from './pages/Explore'
 import Compare from './pages/Compare'
 import LoadingBacktest from './components/LoadingBacktest'
-import { defaultStrategy } from './data/sampleData'
+import { defaultStrategy, defaultStrategyCode } from './data/sampleData'
 
 const AppContext = createContext(null)
 export const useApp = () => useContext(AppContext)
 
 export default function App() {
   const [strategy, setStrategy] = useState(defaultStrategy)
+  const [strategyCode, setStrategyCode] = useState(defaultStrategyCode)
+  const [backtestResults, setBacktestResults] = useState(null)
+  const [backtestError, setBacktestError] = useState(null)
+
   return (
-    <AppContext.Provider value={{ strategy, setStrategy }}>
+    <AppContext.Provider value={{
+      strategy, setStrategy,
+      strategyCode, setStrategyCode,
+      backtestResults, setBacktestResults,
+      backtestError, setBacktestError,
+    }}>
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
