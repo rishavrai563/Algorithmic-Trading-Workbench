@@ -1,0 +1,50 @@
+{
+  "environment": "backtesting",
+  "algorithm-type-name": "RSIMeanReversion",
+  "algorithm-language": "Python",
+  "algorithm-location": "/Lean/Algorithm.Python/main.py",
+  "data-folder": "/Lean/Data/",
+  "debugging": false,
+  "log-handler": "QuantConnect.Logging.CompositeLogHandler",
+  "messaging-handler": "QuantConnect.Messaging.Messaging",
+  "job-queue-handler": "QuantConnect.Queues.JobQueue",
+  "api-handler": "QuantConnect.Api.Api",
+  "map-file-provider": "QuantConnect.Data.Auxiliary.LocalDiskMapFileProvider",
+  "factor-file-provider": "QuantConnect.Data.Auxiliary.LocalDiskFactorFileProvider",
+  "data-provider": "QuantConnect.Lean.Engine.DataFeeds.DefaultDataProvider",
+  "data-channel-provider": "DataChannelProvider",
+  "object-store": "QuantConnect.Lean.Engine.Storage.LocalObjectStore",
+  "data-aggregator": "QuantConnect.Lean.Engine.DataFeeds.AggregationManager",
+  "symbol-minute-limit": 10000,
+  "symbol-second-limit": 10000,
+  "symbol-tick-limit": 10000,
+  "maximum-data-points-per-chart-series": 1000000,
+  "maximum-chart-series": 30,
+  "force-exchange-always-open": true,
+  "show-missing-data-logs": true,
+  "results-destination-folder": "/Results",
+  "job-user-id": "0",
+  "api-access-token": "",
+  "job-organization-id": "",
+  "parameters": {
+    "start-date": "2022-01-01",
+    "end-date": "2023-01-01",
+    "rsi-period": "14",
+    "oversold": "30",
+    "overbought": "65"
+  },
+  "python-additional-paths": [],
+  "environments": {
+    "backtesting": {
+      "live-mode": false,
+      "setup-handler": "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler",
+      "result-handler": "QuantConnect.Lean.Engine.Results.BacktestingResultHandler",
+      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed",
+      "real-time-handler": "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler",
+      "history-provider": [
+        "QuantConnect.Lean.Engine.HistoricalData.SubscriptionDataReaderHistoryProvider"
+      ],
+      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler"
+    }
+  }
+}
