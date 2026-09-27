@@ -1,44 +1,73 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useApp } from '../App'
+import { runBacktest } from '../api/backtest'
 
 export default function LoadingBacktest() {
   const navigate = useNavigate()
-  const [progress, setProgress] = useState(18)
+  const { strategy, strategyCode, setBacktestResults, setBacktestError } = useApp()
+  const [status, setStatus] = useState('Preparing LEAN environment...')
+  const hasRun = useRef(false)
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress((p) => Math.min(100, p + 14))
-    }, 220)
-    const done = setTimeout(() => navigate('/results'), 1800)
-    return () => {
-      clearInterval(timer)
-      clearTimeout(done)
-    }
-  }, [navigate])
+    if (hasRun.current) return
+    hasRun.current = true
 
-  const steps = [
-    ['Loading historical price data', progress > 25],
-    ['Calculating indicator values', progress > 45],
-    ['Processing strategy signals', progress > 65],
-    ['Compiling performance results', progress > 85],
-  ]
+    const execute = async () => {
+      try {
+        setBacktestError(null)
+        setStatus('Sending strategy to C# backend...')
+        
+        const config = {
+          startDate: strategy.startDate,
+          endDate: strategy.endDate,
+          startingCash: 100000
+        }
+
+        const result = await runBacktest(strategyCode, config)
+
+        if (result.success) {
+          setStatus('Results parsed successfully!')
+          setBacktestResults(result)
+          navigate('/results')
+        } else {
+          setBacktestError(result.errorMessage || 'Execution failed')
+          setBacktestResults(result) // Might contain logs
+          navigate('/results')
+        }
+      } catch (err) {
+        setBacktestError(err.message)
+        navigate('/results')
+      }
+    }
+
+    execute()
+  }, [strategy, strategyCode, navigate, setBacktestResults, setBacktestError])
 
   return (
     <section className="center-page">
       <div className="loading-card panel">
         <div className="eyebrow">Backtests / Running</div>
         <h1>Running Backtest</h1>
-        <p>Simulating the strategy on sample historical data.</p>
-        <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
-        <div className="progress-label">{progress}% complete</div>
+        <p>Executing your Python strategy in the LEAN Engine via Docker.</p>
+        
+        <div className="progress-track">
+          <div className="progress-fill" style={{ width: '100%', animation: 'pulse 2s infinite' }} />
+        </div>
+        
         <div className="step-list">
-          {steps.map(([label, done]) => (
-            <div className={`step-row ${done ? 'done' : ''}`} key={label}>
-              <span className="step-dot">{done ? '✓' : '•'}</span>{label}
-            </div>
-          ))}
+          <div className="step-row done">
+            <span className="step-dot">⌛</span>{status}
+          </div>
         </div>
       </div>
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; }
+        }
+      `}</style>
     </section>
   )
 }
