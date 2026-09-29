@@ -1,8 +1,17 @@
 import { useNavigate } from 'react-router-dom'
 import { recentStrategies } from '../data/sampleData'
+import { useApp } from '../App'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { setStrategy, setStrategyCode } = useApp()
+
+  const openStrategy = (strategy) => {
+    setStrategy(strategy.config)
+    setStrategyCode(strategy.code)
+    navigate('/strategy')
+  }
+
   return (
     <div className="page-stack">
       <section className="hero panel">
@@ -40,7 +49,7 @@ export default function Dashboard() {
         <div className="section-title"><h2>Recent Strategies</h2><button className="text-button">View All →</button></div>
         <div className="strategy-grid">
           {recentStrategies.map((strategy) => (
-            <button key={strategy.name} className="strategy-card" onClick={() => navigate('/results')}>
+            <button key={strategy.name} className="strategy-card" onClick={() => openStrategy(strategy)}>
               <span className={`status-dot ${strategy.status === 'Draft' ? 'draft' : ''}`} />
               <span className="status-text">{strategy.status}</span>
               <h3>{strategy.name}</h3>
@@ -58,7 +67,7 @@ export default function Dashboard() {
           <table>
             <thead><tr><th>Strategy</th><th>Asset</th><th>Period</th><th>Return</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
-              {recentStrategies.map((strategy, i) => <tr key={i}><td>{strategy.name}</td><td>{strategy.asset}</td><td>2020–2025</td><td>{i === 0 ? '+38.4%' : i === 1 ? '+29.2%' : '—'}</td><td><span className="status-badge">{strategy.status}</span></td><td><button className="text-button" onClick={() => navigate('/results')}>View Results →</button></td></tr>)}
+              {recentStrategies.map((strategy, i) => <tr key={i}><td>{strategy.name}</td><td>{strategy.asset}</td><td>2020–2025</td><td>{i === 0 ? '+38.4%' : i === 1 ? '+29.2%' : '—'}</td><td><span className="status-badge">{strategy.status}</span></td><td><button className="text-button" onClick={() => openStrategy(strategy)}>Open →</button></td></tr>)}
             </tbody>
           </table>
         </div>

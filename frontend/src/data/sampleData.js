@@ -103,10 +103,132 @@ class RSIMeanReversion(QCAlgorithm):
             self.debug(f"SELL at {price:.2f}, RSI={rsi_value:.2f}")
 `
 
+const movingAverageCrossoverCode = `# region imports
+from AlgorithmImports import *
+from datetime import datetime
+# endregion
+
+DATA_FILE = "__DATA_FILE__"
+ASSET_SYMBOL = "__ASSET_SYMBOL__"
+
+class CustomMarketData(PythonData):
+    def get_source(self, config, date, is_live_mode):
+        return SubscriptionDataSource(f"/Lean/Data/custom/{DATA_FILE}", SubscriptionTransportMedium.LOCAL_FILE)
+
+    def reader(self, config, line, date, is_live_mode):
+        if not line.strip() or line.startswith("Date"): return None
+        try:
+            parts = line.split(",")
+            data = CustomMarketData()
+            data.Symbol = config.Symbol
+            data.Time = datetime.strptime(parts[0].strip(), "%Y-%m-%d")
+            data.Value = float(parts[4])
+            data["Open"] = float(parts[1])
+            data["High"] = float(parts[2])
+            data["Low"] = float(parts[3])
+            data["Close"] = float(parts[4])
+            data["Volume"] = float(parts[5])
+            return data
+        except:
+            return None
+
+class MovingAverageCrossover(QCAlgorithm):
+    def initialize(self):
+        start_str = self.get_parameter("start-date", "2024-01-01")
+        end_str = self.get_parameter("end-date", "2025-01-01")
+        start_parts = start_str.split("-")
+        end_parts = end_str.split("-")
+        self.set_start_date(int(start_parts[0]), int(start_parts[1]), int(start_parts[2]))
+        self.set_end_date(int(end_parts[0]), int(end_parts[1]), int(end_parts[2]))
+        self.set_cash(100000)
+
+        self.asset = self.add_data(CustomMarketData, ASSET_SYMBOL, Resolution.DAILY)
+        self.asset_symbol = self.asset.Symbol
+
+        fast_period = int(self.get_parameter("fast-ma", "10"))
+        slow_period = int(self.get_parameter("slow-ma", "50"))
+        
+        self.fast_ma = self.sma(self.asset_symbol, fast_period, Resolution.DAILY)
+        self.slow_ma = self.sma(self.asset_symbol, slow_period, Resolution.DAILY)
+
+    def on_data(self, data):
+        if not self.slow_ma.is_ready:
+            return
+            
+        price = data[self.asset_symbol].Value
+        
+        if not self.portfolio.invested and self.fast_ma.current.value > self.slow_ma.current.value:
+            self.set_holdings(self.asset_symbol, 1.0)
+            self.debug(f"BUY at {price:.2f}")
+        elif self.portfolio.invested and self.fast_ma.current.value < self.slow_ma.current.value:
+            self.liquidate(self.asset_symbol)
+            self.debug(f"SELL at {price:.2f}")
+`
+
+const breakoutStrategyCode = `# region imports
+from AlgorithmImports import *
+from datetime import datetime
+# endregion
+
+DATA_FILE = "__DATA_FILE__"
+ASSET_SYMBOL = "__ASSET_SYMBOL__"
+
+class CustomMarketData(PythonData):
+    def get_source(self, config, date, is_live_mode):
+        return SubscriptionDataSource(f"/Lean/Data/custom/{DATA_FILE}", SubscriptionTransportMedium.LOCAL_FILE)
+
+    def reader(self, config, line, date, is_live_mode):
+        if not line.strip() or line.startswith("Date"): return None
+        try:
+            parts = line.split(",")
+            data = CustomMarketData()
+            data.Symbol = config.Symbol
+            data.Time = datetime.strptime(parts[0].strip(), "%Y-%m-%d")
+            data.Value = float(parts[4])
+            data["Open"] = float(parts[1])
+            data["High"] = float(parts[2])
+            data["Low"] = float(parts[3])
+            data["Close"] = float(parts[4])
+            data["Volume"] = float(parts[5])
+            return data
+        except:
+            return None
+
+class BreakoutStrategy(QCAlgorithm):
+    def initialize(self):
+        start_str = self.get_parameter("start-date", "2024-01-01")
+        end_str = self.get_parameter("end-date", "2025-01-01")
+        start_parts = start_str.split("-")
+        end_parts = end_str.split("-")
+        self.set_start_date(int(start_parts[0]), int(start_parts[1]), int(start_parts[2]))
+        self.set_end_date(int(end_parts[0]), int(end_parts[1]), int(end_parts[2]))
+        self.set_cash(100000)
+
+        self.asset = self.add_data(CustomMarketData, ASSET_SYMBOL, Resolution.DAILY)
+        self.asset_symbol = self.asset.Symbol
+
+        self.lookback = int(self.get_parameter("lookback", "20"))
+        self.max = self.max(self.asset_symbol, self.lookback, Resolution.DAILY)
+        self.min = self.min(self.asset_symbol, self.lookback, Resolution.DAILY)
+
+    def on_data(self, data):
+        if not self.max.is_ready:
+            return
+            
+        price = data[self.asset_symbol].Value
+        
+        if not self.portfolio.invested and price >= self.max.current.value:
+            self.set_holdings(self.asset_symbol, 1.0)
+            self.debug(f"BUY Breakout at {price:.2f}")
+        elif self.portfolio.invested and price <= self.min.current.value:
+            self.liquidate(self.asset_symbol)
+            self.debug(f"SELL Breakdown at {price:.2f}")
+`
+
 export const recentStrategies = [
-  { name: 'RSI Mean Reversion', asset: 'NIFTY 50', status: 'Backtested', metric: '61.9% win rate' },
-  { name: 'Moving Average Crossover', asset: 'RELIANCE', status: 'Backtested', metric: '28 trades' },
-  { name: 'Breakout Strategy', asset: 'TCS', status: 'Draft', metric: 'Not tested' },
+  { name: 'RSI Mean Reversion', asset: 'NIFTY 50', status: 'Backtested', metric: '61.9% win rate', config: defaultStrategy, code: defaultStrategyCode },
+  { name: 'Moving Average Crossover', asset: 'RELIANCE', status: 'Backtested', metric: '28 trades', config: { name: 'Moving Average Crossover', asset: 'RELIANCE', timeframe: 'Daily', startDate: '2024-06-01', endDate: '2025-01-01', fastMa: 10, slowMa: 50 }, code: movingAverageCrossoverCode },
+  { name: 'Breakout Strategy', asset: 'TCS', status: 'Draft', metric: 'Not tested', config: { name: 'Breakout Strategy', asset: 'TCS', timeframe: 'Daily', startDate: '2024-06-01', endDate: '2025-01-01', lookback: 20 }, code: breakoutStrategyCode },
 ]
 
 export const historicalTrades = [
