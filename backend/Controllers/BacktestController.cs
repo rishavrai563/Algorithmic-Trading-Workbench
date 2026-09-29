@@ -8,8 +8,9 @@ namespace AlgoTrading.Controllers;
 /// API controller for backtest operations.
 /// 
 /// Endpoints:
-///   POST /api/backtest      — Submit and run a backtest
-///   GET  /api/backtest/status — Check Docker/LEAN health
+///   POST /api/backtest        — Submit and run a backtest
+///   GET  /api/backtest/status  — Check Docker/LEAN health
+///   GET  /api/backtest/assets  — Get supported assets list
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -27,12 +28,13 @@ public class BacktestController : ControllerBase
     /// <summary>
     /// Submit a backtest request.
     /// The request body must contain the complete Python strategy code
-    /// and backtest configuration (dates, starting cash).
+    /// and backtest configuration (asset, dates, resolution, starting cash).
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<BacktestResponse>> RunBacktest([FromBody] BacktestRequest request)
     {
-        _logger.LogInformation("POST /api/backtest received — code length: {Len}", request.StrategyCode?.Length ?? 0);
+        _logger.LogInformation("POST /api/backtest received — asset: {Asset}, code length: {Len}",
+            request.Configuration.Asset, request.StrategyCode?.Length ?? 0);
 
         try
         {
@@ -60,5 +62,16 @@ public class BacktestController : ControllerBase
     {
         var status = await _service.GetStatusAsync();
         return Ok(status);
+    }
+
+    /// <summary>
+    /// Get the list of supported assets for the frontend dropdown.
+    /// Never exposes provider-specific instrument keys.
+    /// </summary>
+    [HttpGet("assets")]
+    public ActionResult GetAssets()
+    {
+        var assets = _service.GetSupportedAssets();
+        return Ok(new { assets });
     }
 }

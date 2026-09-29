@@ -9,7 +9,7 @@ namespace AlgoTrading.Services;
 /// 
 /// Responsibilities:
 /// - Writes user strategy code to disk
-/// - Writes LEAN config.json with backtest parameters
+/// - Writes LEAN config.json with backtest parameters (including dynamic asset info)
 /// - Launches the Docker container
 /// - Monitors stdout for the completion signal
 /// - Returns raw output and the path to results
@@ -19,7 +19,7 @@ public class LeanRunner
     private readonly string _workspaceDir;
     private readonly string _resultsDir;
     private readonly string _configPath;
-    private readonly string _algorithmPath;
+    private readonly string _algorithmDir;
     private readonly string _dataDir;
     private const string DockerImage = "quantconnect/lean:latest";
     private const int TimeoutSeconds = 300; // 5 minute safety cap
@@ -34,8 +34,10 @@ public class LeanRunner
         _workspaceDir = Path.Combine(repoRoot, "lean_workspace");
         _resultsDir = Path.Combine(_workspaceDir, "results");
         _configPath = Path.Combine(_workspaceDir, "config.json");
-        _algorithmPath = Path.Combine(_workspaceDir, "RSIStrategy", "main.py");
+        _algorithmDir = Path.Combine(_workspaceDir, "strategy");
         _dataDir = Path.Combine(_workspaceDir, "data");
+
+        Directory.CreateDirectory(_algorithmDir);
 
         _logger.LogInformation("LeanRunner workspace: {Workspace}", _workspaceDir);
     }
@@ -54,12 +56,16 @@ public class LeanRunner
 
     /// <summary>
     /// Prepare the strategy file and config, then run LEAN via Docker.
+    /// Now accepts the asset symbol, data file path, and resolution for dynamic configuration.
     /// </summary>
     public async Task<LeanExecutionResult> RunBacktestAsync(
         string strategyCode,
         string startDate,
         string endDate,
-        int startingCash)
+        int startingCash,
+        string assetSymbol,
+        string dataFileName,
+        string resolution)
     {
         var result = new LeanExecutionResult();
 
@@ -72,19 +78,26 @@ public class LeanRunner
                 return result;
             }
 
-            // Step 2: Write strategy code to the algorithm file
-            Directory.CreateDirectory(Path.GetDirectoryName(_algorithmPath)!);
-            await File.WriteAllTextAsync(_algorithmPath, strategyCode);
-            _logger.LogInformation("Strategy code written to {Path}", _algorithmPath);
+            // Step 2: Inject data file and asset symbol into strategy code
+            // The frontend template uses __DATA_FILE__ and __ASSET_SYMBOL__ placeholders
+            // which the PythonData subclass reads as module-level constants.
+            var injectedCode = strategyCode
+                .Replace("__DATA_FILE__", dataFileName)
+                .Replace("__ASSET_SYMBOL__", assetSymbol);
 
-            // Step 3: Write LEAN config with date parameters
-            WriteConfig(startDate, endDate);
+            var algorithmPath = Path.Combine(_algorithmDir, "main.py");
+            await File.WriteAllTextAsync(algorithmPath, injectedCode);
+            _logger.LogInformation("Strategy code written to {Path} (placeholders injected: {DataFile}, {Symbol})",
+                algorithmPath, dataFileName, assetSymbol);
+
+            // Step 3: Write LEAN config with parameters including asset info
+            WriteConfig(startDate, endDate, assetSymbol, dataFileName, resolution);
 
             // Step 4: Clean previous results
             CleanResults();
 
             // Step 5: Build and run Docker command
-            var dockerCmd = BuildDockerCommand();
+            var dockerCmd = BuildDockerCommand(algorithmPath);
             _logger.LogInformation("Docker command: {Cmd}", string.Join(" ", dockerCmd));
 
             result = await ExecuteDockerAsync(dockerCmd);
@@ -100,10 +113,10 @@ public class LeanRunner
 
     /// <summary>
     /// Write the LEAN config.json file with the user's backtest parameters.
-    /// Preserves all LEAN engine configuration, only updates the parameters section
-    /// and the algorithm class name extracted from the strategy code.
+    /// Now includes asset-specific parameters for the generalized strategy.
     /// </summary>
-    private void WriteConfig(string startDate, string endDate)
+    private void WriteConfig(string startDate, string endDate,
+        string assetSymbol, string dataFileName, string resolution)
     {
         var configText = File.ReadAllText(_configPath);
         using var doc = JsonDocument.Parse(configText);
@@ -115,12 +128,20 @@ public class LeanRunner
         {
             if (prop.Name == "parameters")
             {
-                // Replace parameters with user-supplied dates
+                // Replace parameters with user-supplied values + asset info
                 config["parameters"] = new Dictionary<string, string>
                 {
                     ["start-date"] = startDate,
-                    ["end-date"] = endDate
+                    ["end-date"] = endDate,
+                    ["asset-symbol"] = assetSymbol,
+                    ["data-file"] = dataFileName,
+                    ["resolution"] = resolution
                 };
+            }
+            else if (prop.Name == "algorithm-location")
+            {
+                // Point to the new strategy directory
+                config["algorithm-location"] = "/Lean/Algorithm.Python/main.py";
             }
             else
             {
@@ -128,13 +149,16 @@ public class LeanRunner
             }
         }
 
-        // Ensure parameters exists even if missing from original
+        // Ensure parameters exists
         if (!config.ContainsKey("parameters"))
         {
             config["parameters"] = new Dictionary<string, string>
             {
                 ["start-date"] = startDate,
-                ["end-date"] = endDate
+                ["end-date"] = endDate,
+                ["asset-symbol"] = assetSymbol,
+                ["data-file"] = dataFileName,
+                ["resolution"] = resolution
             };
         }
 
@@ -143,7 +167,7 @@ public class LeanRunner
             WriteIndented = true
         });
         File.WriteAllText(_configPath, json);
-        _logger.LogInformation("Config written: {Start} to {End}", startDate, endDate);
+        _logger.LogInformation("Config written: {Symbol} {Start} to {End}", assetSymbol, startDate, endDate);
     }
 
     /// <summary>
@@ -161,11 +185,12 @@ public class LeanRunner
 
     /// <summary>
     /// Build the Docker command line arguments for running LEAN.
+    /// Mounts the strategy directory and the full custom data directory.
     /// </summary>
-    private string[] BuildDockerCommand()
+    private string[] BuildDockerCommand(string algorithmPath)
     {
         var configDocker = _configPath.Replace("\\", "/");
-        var algorithmDocker = _algorithmPath.Replace("\\", "/");
+        var algorithmDocker = algorithmPath.Replace("\\", "/");
         var dataDocker = _dataDir.Replace("\\", "/");
         var resultsDocker = _resultsDir.Replace("\\", "/");
 
@@ -182,9 +207,6 @@ public class LeanRunner
 
     /// <summary>
     /// Execute the Docker process and monitor stdout for the LEAN completion signal.
-    /// Uses the same "smart polling" approach as the original Python prototype:
-    /// LEAN hangs after completion, so we detect the "Results Posted" log line
-    /// and immediately kill the container.
     /// </summary>
     private async Task<LeanExecutionResult> ExecuteDockerAsync(string[] args)
     {

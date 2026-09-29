@@ -3,13 +3,21 @@ from AlgorithmImports import *
 from datetime import datetime
 # endregion
 
+# These constants are injected by the C# backend before execution.
+# Do NOT change these placeholder names.
+DATA_FILE = "icicibank_day.csv"
+ASSET_SYMBOL = "ICICIBANK"
 
-class Nifty50Data(PythonData):
-    """Custom data class to load NIFTY 50 OHLCV data from a local CSV file."""
+
+class CustomMarketData(PythonData):
+    """
+    Generic custom data class that loads OHLCV data from a CSV file.
+    The file path is injected as a module-level constant by the backend.
+    """
 
     def get_source(self, config, date, is_live_mode):
         return SubscriptionDataSource(
-            "/Lean/Data/custom/nifty50.csv",
+            f"/Lean/Data/custom/{DATA_FILE}",
             SubscriptionTransportMedium.LOCAL_FILE
         )
 
@@ -18,7 +26,7 @@ class Nifty50Data(PythonData):
             return None
         try:
             parts = line.split(",")
-            data = Nifty50Data()
+            data = CustomMarketData()
             data.Symbol = config.Symbol
             data.Time = datetime.strptime(parts[0].strip(), "%Y-%m-%d")
             data.Value = float(parts[4])
@@ -34,46 +42,47 @@ class Nifty50Data(PythonData):
 
 class RSIMeanReversion(QCAlgorithm):
     """
-    RSI Mean Reversion Strategy for NIFTY 50.
+    RSI Mean Reversion Strategy.
+    Works with any asset configured via backend injection.
     BUY when RSI drops below oversold threshold.
     SELL when RSI rises above overbought threshold.
     """
 
     def initialize(self):
-        start_str = self.get_parameter("start-date", "2022-01-01")
-        end_str = self.get_parameter("end-date", "2023-01-01")
+        start_str = self.get_parameter("start-date", "2024-06-01")
+        end_str = self.get_parameter("end-date", "2025-01-01")
         start_parts = start_str.split("-")
         end_parts = end_str.split("-")
         self.set_start_date(int(start_parts[0]), int(start_parts[1]), int(start_parts[2]))
         self.set_end_date(int(end_parts[0]), int(end_parts[1]), int(end_parts[2]))
         self.set_cash(100000)
 
-        self.nifty = self.add_data(Nifty50Data, "NIFTY50", Resolution.DAILY)
-        self.nifty_symbol = self.nifty.Symbol
+        self.asset = self.add_data(CustomMarketData, ASSET_SYMBOL, Resolution.DAILY)
+        self.asset_symbol = self.asset.Symbol
 
         rsi_period = int(self.get_parameter("rsi-period", "14"))
         self.rsi = RelativeStrengthIndex(rsi_period, MovingAverageType.WILDERS)
-        self.register_indicator(self.nifty_symbol, self.rsi, None)
+        self.register_indicator(self.asset_symbol, self.rsi, None)
 
         self.oversold = float(self.get_parameter("oversold", "30"))
         self.overbought = float(self.get_parameter("overbought", "70"))
 
-        self.debug(f"RSI Mean Reversion initialized: period={rsi_period}, "
-                   f"oversold={self.oversold}, overbought={self.overbought}")
+        self.debug(f"RSI Mean Reversion initialized on {ASSET_SYMBOL}: "
+                   f"period={rsi_period}, oversold={self.oversold}, overbought={self.overbought}")
 
     def on_data(self, data):
-        if not data.contains_key(self.nifty_symbol):
+        if not data.contains_key(self.asset_symbol):
             return
         if not self.rsi.is_ready:
             return
 
-        price = data[self.nifty_symbol].Value
+        price = data[self.asset_symbol].Value
         rsi_value = self.rsi.current.value
 
         if rsi_value < self.oversold and not self.portfolio.invested:
-            self.set_holdings(self.nifty_symbol, 1.0)
+            self.set_holdings(self.asset_symbol, 1.0)
             self.debug(f"BUY at {price:.2f}, RSI={rsi_value:.2f}")
 
         elif rsi_value > self.overbought and self.portfolio.invested:
-            self.liquidate(self.nifty_symbol)
+            self.liquidate(self.asset_symbol)
             self.debug(f"SELL at {price:.2f}, RSI={rsi_value:.2f}")

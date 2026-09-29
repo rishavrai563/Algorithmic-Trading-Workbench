@@ -18,6 +18,12 @@ public class BacktestRequest
 
 public class BacktestConfiguration
 {
+    /// <summary>Display name of the selected asset (e.g., "NIFTY 50", "RELIANCE").</summary>
+    public string Asset { get; set; } = "NIFTY 50";
+
+    /// <summary>Candle resolution/timeframe (e.g., "Daily", "1 Hour").</summary>
+    public string Resolution { get; set; } = "Daily";
+
     public string StartDate { get; set; } = "2022-01-01";
     public string EndDate { get; set; } = "2023-01-01";
     public int StartingCash { get; set; } = 100000;

@@ -15,6 +15,9 @@ public class BacktestResponse
     public List<EquityPoint>? EquityCurve { get; set; }
     public List<TradeEvent>? Trades { get; set; }
     public Dictionary<string, string>? RawStatistics { get; set; }
+
+    /// <summary>OHLCV candle data for the candlestick chart visualization.</summary>
+    public List<OhlcCandle>? OhlcData { get; set; }
 }
 
 public class BacktestMetrics
@@ -41,4 +44,16 @@ public class TradeEvent
     public double Price { get; set; }
     public double Quantity { get; set; }
     public int OrderId { get; set; }
+}
+
+/// <summary>
+/// OHLC candle for the frontend candlestick chart.
+/// </summary>
+public class OhlcCandle
+{
+    public long Time { get; set; }   // Unix seconds
+    public double Open { get; set; }
+    public double High { get; set; }
+    public double Low { get; set; }
+    public double Close { get; set; }
 }
