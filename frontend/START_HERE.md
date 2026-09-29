@@ -1,6 +1,6 @@
-# AlgoTrade Workbench Frontend — Start Here
+# AlgoTrade Workbench Frontend 
 
-This is the React/Vite frontend starter for the Algorithmic Trading Visualization Workbench.
+This is the React/Vite frontend for the Algorithmic Trading Visualization Workbench.
 It implements the Lab 5 workflow as a frontend demo using sample data:
 
 Dashboard → Strategy Builder → Parameters → Running Backtest → Results → Explore → Compare
@@ -63,21 +63,8 @@ This frontend currently uses SAMPLE DATA. It does not yet connect to a real back
 
 That is intentional for the frontend-first stage. The next stage can replace the functions in `src/data/sampleData.js` with API calls to your backend/backtesting engine.
 
-## 8. Lab 6 explanation
 
-Implementation:
-
-> “I built the frontend in React using reusable components and route-based pages. The current implementation supports the main user workflow from creating a strategy to exploring and comparing results.”
-
-Organization:
-
-> “I separated reusable UI components, pages, shared state, and sample data instead of putting everything in one file.”
-
-Debugging:
-
-> “I used the browser and React development workflow to trace state changes and navigation. When a control changes, the application updates the shared strategy state and the result view recalculates the demo metrics.”
-
-## 9. Next development step
+## 8. Next development step
 
 Connect these frontend actions to the real backend:
 
