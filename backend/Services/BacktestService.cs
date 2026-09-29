@@ -31,123 +31,60 @@ public class BacktestService
     /// <summary>
     /// Run a complete backtest from strategy code to structured results.
     /// </summary>
-    public async Task<BacktestResponse> RunBacktestAsync(BacktestRequest request)
+    public async Task<BacktestResponse> RunBacktestAsync(BacktestRequest request, string jobId = null, JobManager jobManager = null)
     {
+        void UpdateProgress(int p, string s) { if (jobId != null && jobManager != null) jobManager.UpdateJob(jobId, p, s); }
+        
         var config = request.Configuration;
         _logger.LogInformation("Backtest requested: {Asset}, {Start} to {End}, {Resolution}",
             config.Asset, config.StartDate, config.EndDate, config.Resolution);
 
-        // Step 1: Validate request
+        UpdateProgress(5, "Validating request...");
         var validationError = Validate(request);
         if (validationError != null)
         {
-            return new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = validationError
-            };
+            return new BacktestResponse { Success = false, Status = "Failed", ErrorMessage = validationError };
         }
 
-        // Step 2: Check Docker health
+        UpdateProgress(10, "Checking Docker & LEAN Engine...");
         var (dockerOk, imageOk) = await _runner.CheckHealthAsync();
-        if (!dockerOk)
-        {
-            return new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = "Docker is not running. Please start Docker Desktop and try again."
-            };
-        }
-        if (!imageOk)
-        {
-            return new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = "LEAN Docker image (quantconnect/lean:latest) not found. " +
-                               "Run: docker pull quantconnect/lean:latest"
-            };
-        }
+        if (!dockerOk) return new BacktestResponse { Success = false, Status = "Failed", ErrorMessage = "Docker is not running." };
+        if (!imageOk) return new BacktestResponse { Success = false, Status = "Failed", ErrorMessage = "LEAN Docker image not found." };
 
-        // Step 3: Fetch/resolve historical data
+        UpdateProgress(20, $"Fetching historical data for {config.Asset}...");
         var startDate = DateTime.Parse(config.StartDate);
         var endDate = DateTime.Parse(config.EndDate);
         var resolution = AssetRegistry.MapResolution(config.Resolution);
 
-        var dataResult = await _dataService.GetDataAsync(
-            config.Asset, startDate, endDate, resolution);
-
-        if (!dataResult.Success)
+        var dataResult = await _dataService.GetDataAsync(config.Asset, startDate, endDate, resolution);
+        if (!dataResult.Success || dataResult.Candles.Count == 0)
         {
-            return new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = dataResult.ErrorMessage ??
-                    $"Could not obtain historical data for {config.Asset}."
-            };
+            return new BacktestResponse { Success = false, Status = "Failed", ErrorMessage = dataResult.ErrorMessage ?? "Could not obtain historical data." };
         }
 
-        if (dataResult.Candles.Count == 0)
-        {
-            return new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = $"No historical data available for {config.Asset} " +
-                    $"between {config.StartDate} and {config.EndDate}."
-            };
-        }
-
-        _logger.LogInformation("Historical data ready: {Count} candles, cache={FromCache}",
-            dataResult.Candles.Count, dataResult.FromCache);
-
-        // Step 4: Determine the data file name for LEAN
         var dataFileName = Path.GetFileName(dataResult.CsvFilePath!);
 
-        // Step 5: Execute the backtest via LEAN
+        UpdateProgress(50, "Executing strategy in LEAN Engine...");
         var executionResult = await _runner.RunBacktestAsync(
-            request.StrategyCode,
-            config.StartDate,
-            config.EndDate,
-            config.StartingCash,
-            config.Asset.Replace(" ", "").ToUpper(),
-            dataFileName,
-            resolution
+            request.StrategyCode, config.StartDate, config.EndDate, config.StartingCash,
+            config.Asset.Replace(" ", "").ToUpper(), dataFileName, resolution
         );
 
         if (!executionResult.Success || string.IsNullOrEmpty(executionResult.RawResultsJson))
         {
-            return new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = executionResult.ErrorMessage ?? "LEAN execution failed — no results produced.",
-                LeanLogs = executionResult.Stdout
-            };
+            return new BacktestResponse { Success = false, Status = "Failed", ErrorMessage = executionResult.ErrorMessage ?? "LEAN execution failed.", LeanLogs = executionResult.Stdout };
         }
 
-        // Step 6: Parse results
+        UpdateProgress(85, "Parsing backtest results...");
         var response = _parser.Parse(executionResult.RawResultsJson);
         response.LeanLogs = executionResult.Stdout;
 
-        // Step 7: Attach OHLC data for candlestick chart
+        UpdateProgress(95, "Generating OHLC charts...");
         response.OhlcData = dataResult.Candles
-            .Select(c => new OhlcCandle
-            {
-                Time = new DateTimeOffset(c.Timestamp).ToUnixTimeSeconds(),
-                Open = c.Open,
-                High = c.High,
-                Low = c.Low,
-                Close = c.Close
-            })
+            .Select(c => new OhlcCandle { Time = new DateTimeOffset(c.Timestamp).ToUnixTimeSeconds(), Open = c.Open, High = c.High, Low = c.Low, Close = c.Close })
             .ToList();
 
-        _logger.LogInformation("Backtest completed: success={Success}, trades={Trades}, candles={Candles}",
-            response.Success, response.Trades?.Count ?? 0, response.OhlcData?.Count ?? 0);
-
+        UpdateProgress(100, "Complete!");
         return response;
     }
 

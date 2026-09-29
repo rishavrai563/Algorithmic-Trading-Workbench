@@ -17,40 +17,46 @@ namespace AlgoTrading.Controllers;
 public class BacktestController : ControllerBase
 {
     private readonly BacktestService _service;
+    private readonly JobManager _jobManager;
     private readonly ILogger<BacktestController> _logger;
 
-    public BacktestController(BacktestService service, ILogger<BacktestController> logger)
+    public BacktestController(BacktestService service, JobManager jobManager, ILogger<BacktestController> logger)
     {
         _service = service;
+        _jobManager = jobManager;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Submit a backtest request.
-    /// The request body must contain the complete Python strategy code
-    /// and backtest configuration (asset, dates, resolution, starting cash).
-    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<BacktestResponse>> RunBacktest([FromBody] BacktestRequest request)
+    public ActionResult RunBacktest([FromBody] BacktestRequest request)
     {
         _logger.LogInformation("POST /api/backtest received — asset: {Asset}, code length: {Len}",
             request.Configuration.Asset, request.StrategyCode?.Length ?? 0);
 
-        try
-        {
-            var result = await _service.RunBacktestAsync(request);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unhandled error in backtest endpoint");
-            return StatusCode(500, new BacktestResponse
-            {
-                Success = false,
-                Status = "Failed",
-                ErrorMessage = $"Internal server error: {ex.Message}"
-            });
-        }
+        var job = _jobManager.CreateJob();
+        
+        _ = Task.Run(async () => {
+            try {
+                var result = await _service.RunBacktestAsync(request, job.Id, _jobManager);
+                _jobManager.CompleteJob(job.Id, result);
+            } catch (Exception ex) {
+                _logger.LogError(ex, "Unhandled error in backtest endpoint");
+                _jobManager.CompleteJob(job.Id, new BacktestResponse {
+                    Success = false, Status = "Failed", ErrorMessage = $"Internal server error: {ex.Message}"
+                });
+            }
+        });
+
+        return Ok(new { jobId = job.Id });
+    }
+
+    [HttpGet("{id}/status")]
+    public ActionResult GetJobStatus(string id)
+    {
+        var job = _jobManager.GetJob(id);
+        if (job == null) return NotFound();
+        if (job.IsComplete) return Ok(new { isComplete = true, result = job.Result });
+        return Ok(new { isComplete = false, progress = job.Progress, status = job.Status });
     }
 
     /// <summary>
