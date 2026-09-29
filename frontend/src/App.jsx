@@ -18,6 +18,7 @@ export default function App() {
   const [strategyCode, setStrategyCode] = useState(defaultStrategyCode)
   const [backtestResults, setBacktestResults] = useState(null)
   const [backtestError, setBacktestError] = useState(null)
+  const [runHistory, setRunHistory] = useState([])
 
   return (
     <AppContext.Provider value={{
@@ -25,6 +26,7 @@ export default function App() {
       strategyCode, setStrategyCode,
       backtestResults, setBacktestResults,
       backtestError, setBacktestError,
+      runHistory, setRunHistory,
     }}>
       <Layout>
         <Routes>
