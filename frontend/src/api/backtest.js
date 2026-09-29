@@ -8,7 +8,7 @@ const API_BASE = '/api'
 /**
  * Submit a backtest request to the C# backend.
  * @param {string} strategyCode - Complete Python QCAlgorithm code
- * @param {object} configuration - { startDate, endDate, startingCash }
+ * @param {object} configuration - { asset, resolution, startDate, endDate, startingCash }
  * @returns {Promise<object>} BacktestResponse from the server
  */
 export async function runBacktest(strategyCode, configuration) {
@@ -37,5 +37,15 @@ export async function runBacktest(strategyCode, configuration) {
 export async function getBacktestStatus() {
   const response = await fetch(`${API_BASE}/backtest/status`)
   if (!response.ok) throw new Error('Failed to check backend status')
+  return response.json()
+}
+
+/**
+ * Get the list of supported assets from the backend.
+ * @returns {Promise<{assets: string[]}>}
+ */
+export async function getSupportedAssets() {
+  const response = await fetch(`${API_BASE}/backtest/assets`)
+  if (!response.ok) throw new Error('Failed to load supported assets')
   return response.json()
 }

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
+import { getSupportedAssets } from '../api/backtest'
 
 export default function StrategyBuilder() {
   const navigate = useNavigate()
@@ -8,6 +9,19 @@ export default function StrategyBuilder() {
   const [draft, setDraft] = useState(strategy)
   const [draftCode, setDraftCode] = useState(strategyCode)
   const [mode, setMode] = useState('CODE') // 'CODE' or 'VISUAL'
+  const [supportedAssets, setSupportedAssets] = useState([strategy.asset])
+
+  useEffect(() => {
+    getSupportedAssets()
+      .then(data => {
+        if (data.assets && data.assets.length > 0) {
+          setSupportedAssets(data.assets)
+        }
+      })
+      .catch(() => {
+        // Fallback — keep what we have
+      })
+  }, [])
 
   const update = (key, value) => setDraft((d) => ({ ...d, [key]: value }))
 
@@ -83,18 +97,18 @@ export default function StrategyBuilder() {
           <label>Strategy Name<input value={draft.name} onChange={(e) => update('name', e.target.value)} /></label>
           <label>Asset
             <select value={draft.asset} onChange={(e) => update('asset', e.target.value)}>
-              <option>NIFTY 50</option>
-              <option>AAPL</option>
-              <option>BTC-USD</option>
+              {supportedAssets.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </label>
           <label>Timeframe
             <select value={draft.timeframe} onChange={(e) => update('timeframe', e.target.value)}>
               <option>Daily</option>
-              <option>1 Hour</option>
-              <option>15 Min</option>
+              <option>30 Min</option>
+              <option>Weekly</option>
             </select>
           </label>
+          <label>Start Date<input type="date" value={draft.startDate} onChange={(e) => update('startDate', e.target.value)} /></label>
+          <label>End Date<input type="date" value={draft.endDate} onChange={(e) => update('endDate', e.target.value)} /></label>
           <div className="form-actions" style={{ marginTop: 'auto' }}>
             <button className="button secondary" onClick={() => { setDraft(strategy); setDraftCode(strategyCode); }}>Reset</button>
             <button className="button primary" onClick={handleContinue}>Continue to Parameters →</button>

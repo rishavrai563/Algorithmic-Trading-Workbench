@@ -6,7 +6,7 @@ import { runBacktest } from '../api/backtest'
 export default function LoadingBacktest() {
   const navigate = useNavigate()
   const { strategy, strategyCode, setBacktestResults, setBacktestError } = useApp()
-  const [status, setStatus] = useState('Preparing LEAN environment...')
+  const [status, setStatus] = useState('Checking cache and fetching historical data...')
   const hasRun = useRef(false)
 
   useEffect(() => {
@@ -16,9 +16,11 @@ export default function LoadingBacktest() {
     const execute = async () => {
       try {
         setBacktestError(null)
-        setStatus('Sending strategy to C# backend...')
+        setStatus(`Fetching historical data for ${strategy.asset}...`)
         
         const config = {
+          asset: strategy.asset,
+          resolution: strategy.timeframe,
           startDate: strategy.startDate,
           endDate: strategy.endDate,
           startingCash: 100000
@@ -49,7 +51,7 @@ export default function LoadingBacktest() {
       <div className="loading-card panel">
         <div className="eyebrow">Backtests / Running</div>
         <h1>Running Backtest</h1>
-        <p>Executing your Python strategy in the LEAN Engine via Docker.</p>
+        <p>Fetching historical data and executing your strategy in LEAN.</p>
         
         <div className="progress-track">
           <div className="progress-fill" style={{ width: '100%', animation: 'pulse 2s infinite' }} />
