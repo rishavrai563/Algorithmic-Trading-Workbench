@@ -4,8 +4,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Register services
 builder.Services.AddControllers();
+builder.Services.AddSingleton<AssetRegistry>();
 builder.Services.AddSingleton<LeanRunner>();
 builder.Services.AddSingleton<LeanResultParser>();
+builder.Services.AddSingleton<DataValidator>();
+builder.Services.AddHttpClient<YahooHistoricalDataProvider>();
+builder.Services.AddSingleton<IHistoricalDataProvider, YahooHistoricalDataProvider>();
+builder.Services.AddSingleton<HistoricalDataService>();
 builder.Services.AddScoped<BacktestService>();
 
 // CORS — allow the Vite dev server
