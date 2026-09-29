@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
-import { runBacktest } from '../api/backtest'
+import { runBacktest, getJobStatus } from '../api/backtest'
 
 export default function LoadingBacktest() {
   const navigate = useNavigate()
-  const { strategy, strategyCode, setBacktestResults, setBacktestError } = useApp()
-  const [status, setStatus] = useState('Checking cache and fetching historical data...')
+  const { strategy, strategyCode, setBacktestResults, setBacktestError, setRunHistory } = useApp()
+  const [status, setStatus] = useState('Submitting backtest request...')
+  const [progress, setProgress] = useState(0)
   const hasRun = useRef(false)
 
   useEffect(() => {
@@ -16,7 +17,6 @@ export default function LoadingBacktest() {
     const execute = async () => {
       try {
         setBacktestError(null)
-        setStatus(`Fetching historical data for ${strategy.asset}...`)
         
         const config = {
           asset: strategy.asset,
@@ -26,17 +26,50 @@ export default function LoadingBacktest() {
           startingCash: 100000
         }
 
-        const result = await runBacktest(strategyCode, config)
+        const { jobId } = await runBacktest(strategyCode, config)
 
-        if (result.success) {
-          setStatus('Results parsed successfully!')
-          setBacktestResults(result)
-          navigate('/results')
-        } else {
-          setBacktestError(result.errorMessage || 'Execution failed')
-          setBacktestResults(result) // Might contain logs
-          navigate('/results')
-        }
+        const pollInterval = setInterval(async () => {
+          try {
+            const jobInfo = await getJobStatus(jobId)
+            
+            if (jobInfo.isComplete) {
+              clearInterval(pollInterval)
+              const result = jobInfo.result
+              
+              if (result.success) {
+                setStatus('Results parsed successfully!')
+                setProgress(100)
+                setBacktestResults(result)
+                
+                // Add to run history
+                setRunHistory(prev => {
+                  const newRun = {
+                    id: Date.now(),
+                    name: `Run ${prev.length + 1}`,
+                    config,
+                    strategyConfig: strategy,
+                    metrics: result.metrics || {}
+                  };
+                  return [...prev, newRun];
+                })
+
+                navigate('/results')
+              } else {
+                setBacktestError(result.errorMessage || 'Execution failed')
+                setBacktestResults(result)
+                navigate('/results')
+              }
+            } else {
+              setStatus(jobInfo.status)
+              setProgress(jobInfo.progress)
+            }
+          } catch (err) {
+            clearInterval(pollInterval)
+            setBacktestError(err.message)
+            navigate('/results')
+          }
+        }, 500)
+
       } catch (err) {
         setBacktestError(err.message)
         navigate('/results')
@@ -54,7 +87,7 @@ export default function LoadingBacktest() {
         <p>Fetching historical data and executing your strategy in LEAN.</p>
         
         <div className="progress-track">
-          <div className="progress-fill" style={{ width: '100%', animation: 'pulse 2s infinite' }} />
+          <div className="progress-fill" style={{ width: `${Math.max(5, progress)}%`, transition: 'width 0.5s ease-out' }} />
         </div>
         
         <div className="step-list">

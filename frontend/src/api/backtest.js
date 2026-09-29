@@ -30,6 +30,12 @@ export async function runBacktest(strategyCode, configuration) {
   return response.json()
 }
 
+export async function getJobStatus(jobId) {
+  const response = await fetch(`${API_BASE}/backtest/${jobId}/status`)
+  if (!response.ok) throw new Error('Failed to fetch job status')
+  return response.json()
+}
+
 /**
  * Check Docker and LEAN image health.
  * @returns {Promise<{dockerAvailable: boolean, leanImageExists: boolean}>}
