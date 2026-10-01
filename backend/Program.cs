@@ -9,6 +9,7 @@ builder.Services.AddSingleton<LeanRunner>();
 builder.Services.AddSingleton<LeanResultParser>();
 builder.Services.AddSingleton<DataValidator>();
 builder.Services.AddSingleton<JobManager>();
+builder.Services.AddSingleton<StrategyStore>();
 builder.Services.AddHttpClient<YahooHistoricalDataProvider>();
 builder.Services.AddSingleton<IHistoricalDataProvider, YahooHistoricalDataProvider>();
 builder.Services.AddSingleton<HistoricalDataService>();
