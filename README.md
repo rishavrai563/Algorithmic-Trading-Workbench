@@ -178,7 +178,6 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite (normally `http://localhost:5173`). The Vite development server forwards `/api` requests to the backend on port 5000.
 
 ## Build
 
