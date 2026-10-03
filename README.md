@@ -2,7 +2,7 @@
 
 A human-centered web application for building, testing, exploring, and comparing algorithmic trading strategies through a visual interface.
 
-This project is being developed as part of **AI511 – HCI & Visualization** at the **Indian Institute of Technology Ropar**.
+
 
 ## What this project does
 
