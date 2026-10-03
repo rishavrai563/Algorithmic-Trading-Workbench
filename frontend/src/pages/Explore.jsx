@@ -1,18 +1,39 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { calculateMetrics, generateEquityCurve } from '../data/sampleData'
+import { fetchStrategy } from '../api/strategies'
 import Sparkline from '../components/Sparkline'
+import DocTooltip from '../components/DocTooltip'
 
 export default function Explore() {
   const navigate = useNavigate()
-  const { strategy, setStrategy, backtestResults, runHistory } = useApp()
+  const { strategy, setStrategy, backtestResults, runHistory, activeStrategyId } = useApp()
   const [draft, setDraft] = useState(strategy)
+  const [schema, setSchema] = useState([])
+
+  // Load dynamic schema
+  useEffect(() => {
+    if (!activeStrategyId) {
+      setSchema([
+        { key: 'rsiPeriod', label: 'RSI Period', min: 5, max: 50, step: 1, docKey: 'rsiPeriod' },
+        { key: 'buyThreshold', label: 'Oversold Threshold', min: 10, max: 45, step: 1, docKey: 'buyThreshold' },
+        { key: 'sellThreshold', label: 'Overbought Threshold', min: 55, max: 90, step: 1, docKey: 'sellThreshold' },
+        { key: 'stopLoss', label: 'Stop Loss (%)', min: 1, max: 20, step: 1, docKey: 'stopLoss' },
+        { key: 'takeProfit', label: 'Take Profit (%)', min: 5, max: 50, step: 1, docKey: 'takeProfit' },
+      ])
+      return
+    }
+    fetchStrategy(activeStrategyId)
+      .then(s => {
+        if (s.parametersSchema?.length > 0) setSchema(s.parametersSchema)
+      })
+      .catch(() => {})
+  }, [activeStrategyId])
 
   const metrics = useMemo(() => {
     if (!backtestResults || !backtestResults.metrics || backtestResults.metrics.totalReturn === undefined) return calculateMetrics(draft)
     
-    // Fallback defaults for missing parameters (if not RSI strategy)
     const dBuy = (draft.buyThreshold ?? 30) - (strategy.buyThreshold ?? 30)
     const dSell = (strategy.sellThreshold ?? 70) - (draft.sellThreshold ?? 70)
     
@@ -37,13 +58,12 @@ export default function Explore() {
     const dBuy = (draft.buyThreshold ?? 30) - (strategy.buyThreshold ?? 30)
     const sensitivity = dBuy * 0.35
     
-    // Downsample equity curve for sparkline
     const points = backtestResults.equityCurve
     const step = Math.max(1, Math.floor(points.length / 20))
     const sampled = points.filter((_, i) => i % step === 0).slice(0, 20)
     
     return sampled.map((pt, index) => {
-      const val = pt.equity / 1000 // Normalize to 100-ish scale for sparkline
+      const val = pt.equity / 1000
       return {
         label: new Date((pt.timestamp || 0) * 1000).getFullYear().toString(),
         value: Number((val + sensitivity * (index / 4)).toFixed(2))
@@ -60,32 +80,44 @@ export default function Explore() {
       <div className="explore-layout">
         <section className="panel controls-panel">
           <div className="section-title"><h2>Controls</h2></div>
-          {[
-            ['rsiPeriod', 'RSI Period', 5, 50],
-            ['buyThreshold', 'Oversold Threshold', 10, 45],
-            ['sellThreshold', 'Overbought Threshold', 55, 90],
-            ['stopLoss', 'Stop Loss (%)', 1, 20],
-            ['takeProfit', 'Take Profit (%)', 5, 50],
-          ].map(([key, label, min, max]) => <label className="control-row" key={key}><div className="control-header"><span>{label}</span><strong>{draft[key]}{key === 'stopLoss' || key === 'takeProfit' ? '%' : ''}</strong></div><input type="range" min={min} max={max} value={draft[key]} onChange={(e) => change(key, e.target.value)} /></label>)}
+          {schema.map(param => (
+            <label className="control-row" key={param.key}>
+              <div className="control-header">
+                <span><DocTooltip termKey={param.docKey || param.key}>{param.label}</DocTooltip></span>
+                <strong>{draft[param.key] ?? param.min}{param.label.includes('%') ? '%' : ''}</strong>
+              </div>
+              <input
+                type="range"
+                min={param.min}
+                max={param.max}
+                step={param.step || 1}
+                value={draft[param.key] ?? param.min}
+                onChange={(e) => change(param.key, e.target.value)}
+              />
+            </label>
+          ))}
           <div className="control-actions"><button className="button secondary" onClick={() => setDraft(strategy)}>Reset</button><button className="button primary" onClick={() => { setStrategy(draft); navigate('/backtest-running'); }}>Run Variation</button></div>
         </section>
         <section className="panel">
-          <div className="section-title"><h2>Results Visualization</h2><span className="muted">Updates as you move controls</span></div>
+          <div className="section-title">
+            <h2>Estimated Preview</h2>
+            <span className="muted">Projections based on last real backtest (Not a new execution)</span>
+          </div>
           <div className="metric-grid compact">
             <div>
-              <span>Return</span>
+              <span><DocTooltip termKey="return">Return</DocTooltip></span>
               <strong className={metrics.returnPct >= 0 ? "positive" : "negative"}>
                 {metrics.returnPct >= 0 ? '+' : ''}{metrics.returnPct}%
               </strong>
             </div>
             <div>
-              <span>Drawdown</span>
+              <span><DocTooltip termKey="drawdown">Drawdown</DocTooltip></span>
               <strong className="negative">
                 {metrics.drawdown}%
               </strong>
             </div>
             <div>
-              <span>Trades</span>
+              <span><DocTooltip termKey="trades">Trades</DocTooltip></span>
               <strong>{metrics.trades}</strong>
             </div>
           </div>
@@ -106,18 +138,7 @@ export default function Explore() {
               </button>
             ))
           ) : (
-            [['Config A', strategy], ['Config B', draft], ['Config C', { ...strategy, buyThreshold: 25 }]].map(([name, config]) => { 
-              const m = calculateMetrics(config); 
-              return (
-                <button key={name} className="config-card" onClick={() => setDraft(config)}>
-                  <span>{name}</span>
-                  <strong className={m.returnPct >= 0 ? 'positive' : 'negative'}>
-                    {m.returnPct >= 0 ? '+' : ''}{m.returnPct}%
-                  </strong>
-                  <small>{m.drawdown}% drawdown · {m.trades} trades</small>
-                </button>
-              )
-            })
+            <p className="muted" style={{ padding: '20px' }}>Run backtests to see saved configurations here.</p>
           )}
         </div>
       </div>

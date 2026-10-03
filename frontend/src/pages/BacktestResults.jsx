@@ -4,6 +4,7 @@ import { useApp } from '../App'
 import MetricCard from '../components/MetricCard'
 import Sparkline from '../components/Sparkline'
 import CandlestickChart from '../components/CandlestickChart'
+import DocTooltip from '../components/DocTooltip'
 
 // Error boundary to catch render crashes and display them instead of a blank page
 class ResultsErrorBoundary extends Component {
@@ -124,15 +125,24 @@ function BacktestResultsInner() {
           <div className="eyebrow">Step 3 of 3</div>
           <h1>Backtest Results</h1>
           <p>{strategy?.name || 'Strategy'} · {strategy?.asset || 'Asset'} · {strategy?.startDate || '?'} to {strategy?.endDate || '?'}</p>
+          <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {Object.entries(strategy || {})
+              .filter(([k]) => !['name', 'asset', 'timeframe', 'startDate', 'endDate'].includes(k))
+              .map(([k, v]) => (
+                <span key={k} style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
+                  {k}: {v}
+                </span>
+            ))}
+          </div>
         </div>
         <button className="button secondary" onClick={() => navigate('/explore')}>Explore Parameters</button>
       </div>
 
       <div className="metric-grid">
-        <MetricCard label="Return" value={`${totalReturn > 0 ? '+' : ''}${totalReturn.toFixed(2)}%`} tone={totalReturn >= 0 ? "positive" : "negative"} />
-        <MetricCard label="Max Drawdown" value={`${maxDrawdown.toFixed(2)}%`} tone="negative" />
-        <MetricCard label="Total Trades" value={totalTrades} />
-        <MetricCard label="Win Rate" value={`${winRate.toFixed(2)}%`} />
+        <MetricCard label={<DocTooltip termKey="return">Return</DocTooltip>} value={`${totalReturn > 0 ? '+' : ''}${totalReturn.toFixed(2)}%`} tone={totalReturn >= 0 ? "positive" : "negative"} />
+        <MetricCard label={<DocTooltip termKey="drawdown">Max Drawdown</DocTooltip>} value={`${maxDrawdown.toFixed(2)}%`} tone="negative" />
+        <MetricCard label={<DocTooltip termKey="trades">Total Trades</DocTooltip>} value={totalTrades} />
+        <MetricCard label={<DocTooltip termKey="winRate">Win Rate</DocTooltip>} value={`${winRate.toFixed(2)}%`} />
         <MetricCard label="Final Equity" value={`₹${endEquity.toLocaleString()}`} />
       </div>
 
@@ -171,7 +181,7 @@ function BacktestResultsInner() {
       <section className="panel">
         <div className="section-title">
           <div>
-            <h2>Equity Curve</h2>
+            <h2><DocTooltip termKey="equityCurve">Equity Curve</DocTooltip></h2>
             <span className="muted">Portfolio Value (Start: ₹{startEquity.toLocaleString()})</span>
           </div>
         </div>
@@ -186,7 +196,7 @@ function BacktestResultsInner() {
         <section className="panel">
           <div className="section-title">
             <div>
-              <h2>Drawdown Profile</h2>
+              <h2><DocTooltip termKey="drawdownProfile">Drawdown Profile</DocTooltip></h2>
               <span className="muted">Peak-to-trough risk ({maxDrawdown.toFixed(2)}% max)</span>
             </div>
           </div>

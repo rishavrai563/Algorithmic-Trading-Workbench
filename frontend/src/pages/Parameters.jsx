@@ -1,12 +1,75 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
+import { fetchStrategy } from '../api/strategies'
+import DocTooltip from '../components/DocTooltip'
 
 export default function Parameters() {
   const navigate = useNavigate()
-  const { strategy, setStrategy } = useApp()
+  const { strategy, setStrategy, activeStrategyId } = useApp()
   const [draft, setDraft] = useState(strategy)
+  const [schema, setSchema] = useState([]) // Dynamic parameter schema
   const update = (key, value) => setDraft((d) => ({ ...d, [key]: Number(value) }))
+
+  // Load schema from backend if we have an active strategy
+  useEffect(() => {
+    if (!activeStrategyId) {
+      // Fallback schema for legacy flow
+      setSchema([
+        { key: 'rsiPeriod', label: 'RSI Period', min: 5, max: 50, step: 1, docKey: 'rsiPeriod' },
+        { key: 'buyThreshold', label: 'Oversold Threshold', min: 10, max: 45, step: 1, docKey: 'buyThreshold' },
+        { key: 'sellThreshold', label: 'Overbought Threshold', min: 55, max: 90, step: 1, docKey: 'sellThreshold' },
+        { key: 'stopLoss', label: 'Stop Loss (%)', min: 1, max: 20, step: 1, docKey: 'stopLoss' },
+        { key: 'takeProfit', label: 'Take Profit (%)', min: 5, max: 50, step: 1, docKey: 'takeProfit' },
+      ])
+      return
+    }
+
+    fetchStrategy(activeStrategyId)
+      .then(s => {
+        if (s.parametersSchema && s.parametersSchema.length > 0) {
+          setSchema(s.parametersSchema)
+        }
+      })
+      .catch(err => console.warn('Failed to load strategy schema:', err))
+  }, [activeStrategyId])
+
+  // Build compiled rules display from the schema
+  const buildRulesDisplay = () => {
+    if (schema.length === 0) return null
+    const rsiP = draft.rsiPeriod
+    const buy = draft.buyThreshold
+    const sell = draft.sellThreshold
+    const fast = draft.fastMa
+    const slow = draft.slowMa
+    const lookback = draft.lookback
+
+    if (fast !== undefined && slow !== undefined) {
+      return (
+        <>
+          <div className="compiled-rule buy-rule">IF <DocTooltip termKey="fastMa">Fast MA({fast})</DocTooltip> crosses above <DocTooltip termKey="slowMa">Slow MA({slow})</DocTooltip> → BUY</div>
+          <div className="compiled-rule sell-rule">IF <DocTooltip termKey="fastMa">Fast MA({fast})</DocTooltip> crosses below <DocTooltip termKey="slowMa">Slow MA({slow})</DocTooltip> → SELL</div>
+        </>
+      )
+    }
+    if (lookback !== undefined) {
+      return (
+        <>
+          <div className="compiled-rule buy-rule">IF Price ≥ <DocTooltip termKey="lookback">Highest({lookback})</DocTooltip> → BUY</div>
+          <div className="compiled-rule sell-rule">IF Price ≤ <DocTooltip termKey="lookback">Lowest({lookback})</DocTooltip> → SELL</div>
+        </>
+      )
+    }
+    if (rsiP !== undefined) {
+      return (
+        <>
+          <div className="compiled-rule buy-rule">IF <DocTooltip termKey="rsi">RSI</DocTooltip>({rsiP}) &lt; <DocTooltip termKey="buyThreshold">{buy}</DocTooltip> → BUY</div>
+          <div className="compiled-rule sell-rule">IF <DocTooltip termKey="rsi">RSI</DocTooltip>({rsiP}) &gt; <DocTooltip termKey="sellThreshold">{sell}</DocTooltip> → SELL</div>
+        </>
+      )
+    }
+    return null
+  }
 
   return (
     <div className="page-stack">
@@ -14,27 +77,35 @@ export default function Parameters() {
       <div className="two-col">
         <section className="panel">
           <div className="section-title"><h2>Strategy & Data</h2></div>
-          <div className="info-grid"><div><span>Strategy</span><strong>{strategy.name}</strong></div><div><span>Asset</span><strong>{strategy.asset}</strong></div><div><span>Period</span><strong>{strategy.startDate} → {strategy.endDate}</strong></div><div><span>Timeframe</span><strong>{strategy.timeframe}</strong></div></div>
+          <div className="info-grid"><div><span>Strategy</span><strong>{strategy.name}</strong></div><div><span>Asset</span><strong>{strategy.asset}</strong></div><div><span>Period</span><strong>{strategy.startDate} → {strategy.endDate}</strong></div><div><span><DocTooltip termKey="resolution">Timeframe</DocTooltip></span><strong>{strategy.timeframe}</strong></div></div>
         </section>
         <section className="panel">
           <div className="section-title"><h2>Compiled Rules</h2></div>
-          <div className="compiled-rule buy-rule">IF RSI({draft.rsiPeriod}) &lt; {draft.buyThreshold} → BUY</div>
-          <div className="compiled-rule sell-rule">IF RSI({draft.rsiPeriod}) &gt; {draft.sellThreshold} → SELL</div>
+          {buildRulesDisplay()}
         </section>
       </div>
 
       <section className="panel">
-        <div className="section-title"><h2>Parameter Controls</h2><span className="muted">Change values and run again</span></div>
+        <div className="section-title"><h2>Parameter Controls</h2><span className="muted">Dynamic sliders based on your strategy type</span></div>
         <div className="sliders-grid">
-          <label>RSI Period <input type="range" min="5" max="50" value={draft.rsiPeriod} onChange={(e) => update('rsiPeriod', e.target.value)} /><div className="range-value">{draft.rsiPeriod}</div></label>
-          <label>Oversold Threshold <input type="range" min="10" max="45" value={draft.buyThreshold} onChange={(e) => update('buyThreshold', e.target.value)} /><div className="range-value">{draft.buyThreshold}</div></label>
-          <label>Overbought Threshold <input type="range" min="55" max="90" value={draft.sellThreshold} onChange={(e) => update('sellThreshold', e.target.value)} /><div className="range-value">{draft.sellThreshold}</div></label>
-          <label>Stop Loss (%) <input type="range" min="1" max="20" value={draft.stopLoss} onChange={(e) => update('stopLoss', e.target.value)} /><div className="range-value">{draft.stopLoss}%</div></label>
-          <label>Take Profit (%) <input type="range" min="5" max="50" value={draft.takeProfit} onChange={(e) => update('takeProfit', e.target.value)} /><div className="range-value">{draft.takeProfit}%</div></label>
+          {schema.map(param => (
+            <label key={param.key}>
+              <DocTooltip termKey={param.docKey || param.key}>{param.label}</DocTooltip>
+              <input
+                type="range"
+                min={param.min}
+                max={param.max}
+                step={param.step || 1}
+                value={draft[param.key] ?? param.min}
+                onChange={(e) => update(param.key, e.target.value)}
+              />
+              <div className="range-value">{draft[param.key] ?? param.min}{param.label.includes('%') ? '%' : ''}</div>
+            </label>
+          ))}
         </div>
       </section>
 
-      <div className="bottom-actions"><button className="button secondary" onClick={() => navigate('/strategy')}>Cancel</button><button className="button primary" onClick={() => { setStrategy(draft); navigate('/backtest-running') }}>Run Backtest →</button></div>
+      <div className="bottom-actions"><button className="button secondary" onClick={() => navigate('/strategy')}>Cancel</button><button className="button primary" onClick={() => { setStrategy(draft); navigate('/backtest-running') }}>Run <DocTooltip termKey="backtest">Backtest</DocTooltip> →</button></div>
     </div>
   )
 }
