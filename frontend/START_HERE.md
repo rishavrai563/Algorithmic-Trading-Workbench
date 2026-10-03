@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-Open the localhost URL printed by Vite (normally `http://localhost:5173`).
+Open the localhost URL printed by Vite.
 
 ## 5. What each folder means
 
@@ -57,14 +57,9 @@ src/
 - Explore Parameters changes sample output based on the selected values.
 - Compare shows two sample configurations side-by-side.
 
-## 7. Important limitation for Lab 6
-
-This frontend currently uses SAMPLE DATA. It does not yet connect to a real backend or perform a real financial backtest.
-
-That is intentional for the frontend-first stage. The next stage can replace the functions in `src/data/sampleData.js` with API calls to your backend/backtesting engine.
 
 
-## 8. Next development step
+## 7. Next development step
 
 Connect these frontend actions to the real backend:
 
