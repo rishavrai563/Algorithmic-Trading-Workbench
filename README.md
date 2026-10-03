@@ -199,7 +199,7 @@ dotnet build
 
 
 
-## 👥 Team Members
+##  Team Members
 | Name | Entry No. | GitHub |
 |------|-----------|--------|
 | **Ravikant Sharma** | 2024AIB1013 | https://github.com/thyravikant |
