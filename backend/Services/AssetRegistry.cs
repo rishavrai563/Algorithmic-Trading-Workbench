@@ -85,8 +85,23 @@ public class AssetRegistry
     /// </summary>
     public Asset? GetByDisplayName(string displayName)
     {
-        _assets.TryGetValue(displayName, out var asset);
-        return asset;
+        if (string.IsNullOrWhiteSpace(displayName)) return null;
+
+        if (_assets.TryGetValue(displayName, out var asset))
+            return asset;
+
+        // Support any stock globally by dynamically generating it using Yahoo Finance ticker format
+        var symbol = displayName.Trim().ToUpperInvariant();
+        var cleanSymbol = symbol.Replace(".NS", "").Replace(".BO", "").Replace("^", "");
+        var providerKey = symbol.Contains('.') ? symbol : symbol + ".NS";
+        
+        return new Asset
+        {
+            DisplayName = symbol,
+            Symbol = cleanSymbol,
+            Exchange = "DYNAMIC",
+            ProviderInstrumentKey = providerKey
+        };
     }
 
     /// <summary>

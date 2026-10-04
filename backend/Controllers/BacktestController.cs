@@ -80,4 +80,45 @@ public class BacktestController : ControllerBase
         var assets = _service.GetSupportedAssets();
         return Ok(new { assets });
     }
+
+    /// <summary>
+    /// Proxy search to Yahoo Finance API for autocomplete suggestions.
+    /// Filters to show NSE/BSE stocks primarily.
+    /// </summary>
+    [HttpGet("assets/search")]
+    public async Task<ActionResult> SearchAssets([FromQuery] string q)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return Ok(new { assets = new string[0] });
+
+        try
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("User-Agent", "AlgoTradingApp/1.0");
+            var url = $"https://query2.finance.yahoo.com/v1/finance/search?q={Uri.EscapeDataString(q)}&quotesCount=10&newsCount=0";
+            var response = await client.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
+                return Ok(new { assets = new[] { q.ToUpper() } }); // Fallback to raw query
+
+            var content = await response.Content.ReadAsStringAsync();
+            var json = System.Text.Json.JsonDocument.Parse(content);
+            var quotes = json.RootElement.GetProperty("quotes");
+            
+            var suggestions = new List<string>();
+            foreach (var quote in quotes.EnumerateArray())
+            {
+                if (quote.TryGetProperty("symbol", out var symbolProp))
+                {
+                    var sym = symbolProp.GetString();
+                    if (sym != null) suggestions.Add(sym.Replace(".NS", "").Replace(".BO", ""));
+                }
+            }
+
+            return Ok(new { assets = suggestions.Distinct().Take(8).ToList() });
+        }
+        catch
+        {
+            return Ok(new { assets = new[] { q.ToUpper() } }); // Fallback
+        }
+    }
 }

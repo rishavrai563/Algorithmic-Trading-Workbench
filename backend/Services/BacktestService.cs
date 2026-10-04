@@ -67,7 +67,7 @@ public class BacktestService
         UpdateProgress(50, "Executing strategy in LEAN Engine...");
         var executionResult = await _runner.RunBacktestAsync(
             request.StrategyCode, config.StartDate, config.EndDate, config.StartingCash,
-            config.Asset.Replace(" ", "").ToUpper(), dataFileName, resolution
+            config.Asset.Replace(" ", "").ToUpper(), dataFileName, resolution, config.Parameters
         );
 
         if (!executionResult.Success || string.IsNullOrEmpty(executionResult.RawResultsJson))

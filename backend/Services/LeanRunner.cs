@@ -65,7 +65,8 @@ public class LeanRunner
         int startingCash,
         string assetSymbol,
         string dataFileName,
-        string resolution)
+        string resolution,
+        Dictionary<string, string> parameters)
     {
         var result = new LeanExecutionResult();
 
@@ -91,7 +92,7 @@ public class LeanRunner
                 algorithmPath, dataFileName, assetSymbol);
 
             // Step 3: Write LEAN config with parameters including asset info
-            WriteConfig(startDate, endDate, assetSymbol, dataFileName, resolution);
+            WriteConfig(startDate, endDate, assetSymbol, dataFileName, resolution, parameters);
 
             // Step 4: Clean previous results
             CleanResults();
@@ -116,7 +117,7 @@ public class LeanRunner
     /// Now includes asset-specific parameters for the generalized strategy.
     /// </summary>
     private void WriteConfig(string startDate, string endDate,
-        string assetSymbol, string dataFileName, string resolution)
+        string assetSymbol, string dataFileName, string resolution, Dictionary<string, string> customParameters)
     {
         var configText = File.ReadAllText(_configPath);
         using var doc = JsonDocument.Parse(configText);
@@ -124,19 +125,30 @@ public class LeanRunner
 
         // Build a new config preserving all existing keys
         var config = new Dictionary<string, object>();
+        
+        var finalParams = new Dictionary<string, string>
+        {
+            ["start-date"] = startDate,
+            ["end-date"] = endDate,
+            ["asset-symbol"] = assetSymbol,
+            ["data-file"] = dataFileName,
+            ["resolution"] = resolution
+        };
+        
+        if (customParameters != null)
+        {
+            foreach (var kvp in customParameters)
+            {
+                finalParams[kvp.Key] = kvp.Value;
+            }
+        }
+
         foreach (var prop in root.EnumerateObject())
         {
             if (prop.Name == "parameters")
             {
                 // Replace parameters with user-supplied values + asset info
-                config["parameters"] = new Dictionary<string, string>
-                {
-                    ["start-date"] = startDate,
-                    ["end-date"] = endDate,
-                    ["asset-symbol"] = assetSymbol,
-                    ["data-file"] = dataFileName,
-                    ["resolution"] = resolution
-                };
+                config["parameters"] = finalParams;
             }
             else if (prop.Name == "algorithm-location")
             {
@@ -152,14 +164,7 @@ public class LeanRunner
         // Ensure parameters exists
         if (!config.ContainsKey("parameters"))
         {
-            config["parameters"] = new Dictionary<string, string>
-            {
-                ["start-date"] = startDate,
-                ["end-date"] = endDate,
-                ["asset-symbol"] = assetSymbol,
-                ["data-file"] = dataFileName,
-                ["resolution"] = resolution
-            };
+            config["parameters"] = finalParams;
         }
 
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions

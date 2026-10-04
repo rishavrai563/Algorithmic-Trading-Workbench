@@ -27,4 +27,7 @@ public class BacktestConfiguration
     public string StartDate { get; set; } = "2022-01-01";
     public string EndDate { get; set; } = "2023-01-01";
     public int StartingCash { get; set; } = 100000;
+    
+    /// <summary>Dynamic strategy parameters to inject into LEAN configuration.</summary>
+    public Dictionary<string, string> Parameters { get; set; } = new();
 }
