@@ -1,15 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
-import { getSupportedAssets } from '../api/backtest'
+import { getSupportedAssets, searchAssets } from '../api/backtest'
+import { saveStrategy, deleteStrategy } from '../api/strategies'
+import Editor from '@monaco-editor/react'
+import VisualBlocksEditor from '../components/VisualBlocksEditor'
 
 export default function StrategyBuilder() {
   const navigate = useNavigate()
-  const { strategy, setStrategy, strategyCode, setStrategyCode } = useApp()
+  const { strategy, setStrategy, strategyCode, setStrategyCode, activeStrategyId, refreshData } = useApp()
   const [draft, setDraft] = useState(strategy)
   const [draftCode, setDraftCode] = useState(strategyCode)
   const [mode, setMode] = useState('CODE') // 'CODE' or 'VISUAL'
   const [supportedAssets, setSupportedAssets] = useState([strategy.asset])
+  const [editorMarkers, setEditorMarkers] = useState([])
+  const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const assetInputRef = useRef(null)
+  const editorRef = useRef(null)
+  const monacoRef = useRef(null)
 
   useEffect(() => {
     getSupportedAssets()
@@ -18,18 +28,172 @@ export default function StrategyBuilder() {
           setSupportedAssets(data.assets)
         }
       })
-      .catch(() => {
-        // Fallback — keep what we have
-      })
+      .catch(() => {})
   }, [])
 
+  // Sync when global strategy changes (e.g. from Dashboard click)
+  useEffect(() => {
+    setDraft(strategy)
+  }, [strategy])
+  useEffect(() => {
+    setDraftCode(strategyCode)
+  }, [strategyCode])
+
   const update = (key, value) => setDraft((d) => ({ ...d, [key]: value }))
+  
+  const handleAssetSearch = async (query) => {
+    update('asset', query.toUpperCase())
+    if (query.length >= 2) {
+      try {
+        const data = await searchAssets(query)
+        if (data.assets && data.assets.length > 0) {
+          setSupportedAssets(Array.from(new Set([...data.assets, strategy.asset])))
+        }
+      } catch (err) {
+        // Ignore search errors, fallback to existing options
+      }
+    }
+  }
 
   const handleContinue = () => {
     setStrategy(draft)
     setStrategyCode(draftCode)
     navigate('/parameters')
   }
+
+  // Save to backend
+  const handleSave = async () => {
+    if (!activeStrategyId) {
+      // No active strategy — just apply locally
+      setStrategy(draft)
+      setStrategyCode(draftCode)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(null), 2000)
+      return
+    }
+    setSaveStatus('saving')
+    try {
+      // Extract parameter values from draft (non-metadata keys)
+      const metaKeys = ['name', 'asset', 'timeframe', 'startDate', 'endDate']
+      const paramValues = {}
+      Object.entries(draft).forEach(([k, v]) => {
+        if (!metaKeys.includes(k) && typeof v === 'number') paramValues[k] = v
+      })
+
+      await saveStrategy(activeStrategyId, {
+        name: draft.name,
+        asset: draft.asset,
+        timeframe: draft.timeframe,
+        startDate: draft.startDate,
+        endDate: draft.endDate,
+        pythonCode: draftCode,
+        parameterValues: paramValues,
+      })
+
+      setStrategy(draft)
+      setStrategyCode(draftCode)
+      await refreshData()
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(null), 2000)
+    } catch (err) {
+      console.error('Save failed:', err)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus(null), 3000)
+    }
+  }
+
+  // Delete from backend
+  const confirmDelete = () => {
+    setShowDeleteModal(true)
+  }
+
+  const handleDelete = async () => {
+    if (!activeStrategyId) return
+    setShowDeleteModal(false)
+    try {
+      await deleteStrategy(activeStrategyId)
+      await refreshData()
+      navigate('/')
+    } catch (err) {
+      console.error('Delete failed:', err)
+      alert('Failed to delete strategy. It might already be removed.')
+    }
+  }
+
+  // Handle clicking outside asset dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (assetInputRef.current && !assetInputRef.current.contains(event.target)) {
+        setShowAssetDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Monaco editor mount handler
+  const handleEditorDidMount = useCallback((editor, monaco) => {
+    editorRef.current = editor
+    monacoRef.current = monaco
+
+    // Add Ctrl+Enter shortcut to run backtest
+    editor.addAction({
+      id: 'run-backtest',
+      label: 'Run Backtest',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+      run: () => handleContinue()
+    })
+  }, [])
+
+  // Validate Python code on change and set markers
+  const handleEditorChange = useCallback((value) => {
+    setDraftCode(value || '')
+
+    if (!monacoRef.current || !editorRef.current) return
+    const monaco = monacoRef.current
+    const model = editorRef.current.getModel()
+    if (!model) return
+
+    const markers = []
+    const lines = (value || '').split('\n')
+
+    lines.forEach((line, idx) => {
+      // Flag mixed tabs and spaces
+      if (/^\t+ /.test(line) || /^ +\t/.test(line)) {
+        markers.push({
+          severity: monaco.MarkerSeverity.Warning,
+          message: 'Mixed tabs and spaces — Python will throw an IndentationError.',
+          startLineNumber: idx + 1, startColumn: 1,
+          endLineNumber: idx + 1, endColumn: line.length + 1,
+        })
+      }
+      // Flag common Python syntax mistakes
+      if (/def\s+\w+\s*\([^)]*\)\s*[^:]\s*$/.test(line.trimEnd()) && !line.trimEnd().endsWith(':') && line.trim().startsWith('def ')) {
+        markers.push({
+          severity: monaco.MarkerSeverity.Error,
+          message: 'Missing colon (:) at end of function definition.',
+          startLineNumber: idx + 1, startColumn: 1,
+          endLineNumber: idx + 1, endColumn: line.length + 1,
+        })
+      }
+      if (/class\s+\w+.*[^:]\s*$/.test(line.trimEnd()) && !line.trimEnd().endsWith(':') && line.trim().startsWith('class ')) {
+        markers.push({
+          severity: monaco.MarkerSeverity.Error,
+          message: 'Missing colon (:) at end of class definition.',
+          startLineNumber: idx + 1, startColumn: 1,
+          endLineNumber: idx + 1, endColumn: line.length + 1,
+        })
+      }
+    })
+
+    monaco.editor.setModelMarkers(model, 'python-lint', markers)
+    setEditorMarkers(markers)
+  }, [])
+
+  // Generate code from visual blocks
+  const handleBlocksCodeGenerated = useCallback((generatedCode) => {
+    setDraftCode(generatedCode)
+  }, [])
 
   return (
     <div className="page-stack">
@@ -39,7 +203,17 @@ export default function StrategyBuilder() {
           <h1>Strategy Builder</h1>
           <p>Define the rules that generate trading actions using Python code or visual blocks.</p>
         </div>
-        <button className="button secondary" onClick={() => navigate('/')}>Back to Dashboard</button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {saveStatus === 'saving' && <span className="muted" style={{ fontSize: '12px' }}>Saving...</span>}
+          {saveStatus === 'saved' && <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>✓ Saved</span>}
+          {saveStatus === 'error' && <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>✕ Save failed</span>}
+          
+          {activeStrategyId && (
+            <button className="button secondary" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={confirmDelete}>🗑 Delete</button>
+          )}
+          <button className="button secondary" onClick={handleSave}>💾 Save</button>
+          <button className="button secondary" onClick={() => navigate('/')}>Back to Dashboard</button>
+        </div>
       </div>
 
       <div className="builder-controls">
@@ -55,50 +229,98 @@ export default function StrategyBuilder() {
             <div className="code-editor-container">
               <div className="section-title">
                 <h2>Python QCAlgorithm</h2>
-                <span className="muted">LEAN Engine Compatible</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span className="muted">LEAN Engine Compatible</span>
+                  {editorMarkers.length > 0 && (
+                    <span style={{
+                      fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 600,
+                      background: editorMarkers.some(m => m.severity === 8) ? '#fee2e2' : '#fef9c3',
+                      color: editorMarkers.some(m => m.severity === 8) ? '#b91c1c' : '#a16207',
+                    }}>
+                      {editorMarkers.length} issue{editorMarkers.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
-              <textarea
-                className="code-editor"
-                value={draftCode}
-                onChange={(e) => setDraftCode(e.target.value)}
-                spellCheck="false"
-              />
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                <Editor
+                  height="500px"
+                  defaultLanguage="python"
+                  value={draftCode}
+                  onChange={handleEditorChange}
+                  onMount={handleEditorDidMount}
+                  theme="vs-dark"
+                  options={{
+                    fontSize: 13,
+                    fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    automaticLayout: true,
+                    tabSize: 4,
+                    insertSpaces: true,
+                    wordWrap: 'on',
+                    bracketPairColorization: { enabled: true },
+                    padding: { top: 12 },
+                    renderLineHighlight: 'line',
+                    smoothScrolling: true,
+                    cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: '12px', color: '#94a3b8' }}>
+                <span>Press Ctrl+Enter to run backtest</span>
+                <span>Python · UTF-8 · LF</span>
+              </div>
             </div>
           ) : (
-            <>
-              <div className="section-title">
-                <h2>Strategy Canvas</h2>
-                <span className="demo-pill">Feature Not Yet Available</span>
-              </div>
-              <div className="path-grid" style={{ opacity: 0.5, pointerEvents: 'none' }}>
-                <div className="rule-path long-path">
-                  <div className="path-title">PATH 1 · LONG ENTRY</div>
-                  <div className="node indicator-node"><strong>INDICATOR · RSI</strong><span>Source: Close · Period: {draft.rsiPeriod}</span></div>
-                  <div className="connector">↓</div>
-                  <div className="node condition-node selected"><strong>CONDITION</strong><span>RSI &lt; {draft.buyThreshold}</span></div>
-                  <div className="connector">↓</div>
-                  <div className="node action-node buy"><strong>ACTION · BUY</strong><span>Order Type: Long</span></div>
-                </div>
-                <div className="rule-path short-path">
-                  <div className="path-title">PATH 2 · EXIT</div>
-                  <div className="node indicator-node"><strong>INDICATOR · RSI</strong><span>Source: Close · Period: {draft.rsiPeriod}</span></div>
-                  <div className="connector">↓</div>
-                  <div className="node condition-node"><strong>CONDITION</strong><span>RSI &gt; {draft.sellThreshold}</span></div>
-                  <div className="connector">↓</div>
-                  <div className="node action-node sell"><strong>ACTION · SELL</strong><span>Order Type: Exit</span></div>
-                </div>
-              </div>
-            </>
+            <VisualBlocksEditor
+              draft={draft}
+              draftCode={draftCode}
+              onCodeGenerated={handleBlocksCodeGenerated}
+            />
           )}
         </section>
 
         <aside className="panel inspector">
           <div className="section-title"><h2>Strategy Metadata</h2></div>
           <label>Strategy Name<input value={draft.name} onChange={(e) => update('name', e.target.value)} /></label>
-          <label>Asset
-            <select value={draft.asset} onChange={(e) => update('asset', e.target.value)}>
-              {supportedAssets.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+          <label style={{ position: 'relative' }} ref={assetInputRef}>Asset
+            <input 
+              value={draft.asset} 
+              onChange={(e) => {
+                handleAssetSearch(e.target.value)
+                setShowAssetDropdown(true)
+              }}
+              onFocus={() => setShowAssetDropdown(true)}
+              placeholder="Type ticker symbol..."
+              autoComplete="off"
+            />
+            {showAssetDropdown && supportedAssets.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, 
+                backgroundColor: '#fff', border: '1px solid #e2e8f0', 
+                borderRadius: '8px', zIndex: 10, marginTop: '4px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                maxHeight: '200px', overflowY: 'auto'
+              }}>
+                {supportedAssets.map(a => (
+                  <div 
+                    key={a} 
+                    style={{ padding: '8px 12px', cursor: 'pointer', color: '#0f172a', fontSize: '13px', borderBottom: '1px solid #f1f5f9' }}
+                    onClick={() => {
+                      update('asset', a)
+                      setShowAssetDropdown(false)
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    {a}
+                  </div>
+                ))}
+              </div>
+            )}
           </label>
           <label>Timeframe
             <select value={draft.timeframe} onChange={(e) => update('timeframe', e.target.value)}>
@@ -115,6 +337,29 @@ export default function StrategyBuilder() {
           </div>
         </aside>
       </div>
+
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: '#fff', padding: '24px', borderRadius: '12px',
+            width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, color: '#0f172a', fontSize: '18px', fontWeight: 600 }}>Delete Strategy</h3>
+            <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.5' }}>
+              Are you sure you want to delete <strong>"{draft.name}"</strong>?<br/><br/>
+              This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="button secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button className="button" style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none' }} onClick={handleDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

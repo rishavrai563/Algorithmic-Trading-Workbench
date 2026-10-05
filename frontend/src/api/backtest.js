@@ -55,3 +55,15 @@ export async function getSupportedAssets() {
   if (!response.ok) throw new Error('Failed to load supported assets')
   return response.json()
 }
+
+/**
+ * Search for assets via Yahoo Finance proxy
+ * @param {string} query 
+ * @returns {Promise<{assets: string[]}>}
+ */
+export async function searchAssets(query) {
+  if (!query) return { assets: [] }
+  const response = await fetch(`${API_BASE}/backtest/assets/search?q=${encodeURIComponent(query)}`)
+  if (!response.ok) return { assets: [] }
+  return response.json()
+}
