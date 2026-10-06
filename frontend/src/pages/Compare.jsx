@@ -227,7 +227,7 @@ export default function Compare() {
       </section>
 
       <div className="bottom-actions">
-        <button className="button secondary" onClick={() => navigate('/dashboard')}>Return to Dashboard</button>
+        <button className="button secondary" onClick={() => navigate('/')}>Return to Dashboard</button>
         <button className="button primary" onClick={() => navigate('/strategy')}>Edit Strategy</button>
       </div>
 
