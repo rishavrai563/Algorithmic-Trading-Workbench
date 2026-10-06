@@ -113,7 +113,7 @@ export default function StrategyBuilder() {
     try {
       await deleteStrategy(activeStrategyId)
       await refreshData()
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       console.error('Delete failed:', err)
       alert('Failed to delete strategy. It might already be removed.')
@@ -212,7 +212,7 @@ export default function StrategyBuilder() {
             <button className="button secondary" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={confirmDelete}>🗑 Delete</button>
           )}
           <button className="button secondary" onClick={handleSave}>💾 Save</button>
-          <button className="button secondary" onClick={() => navigate('/')}>Back to Dashboard</button>
+          <button className="button secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
         </div>
       </div>
 
