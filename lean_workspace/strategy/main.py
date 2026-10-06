@@ -3,27 +3,14 @@ from AlgorithmImports import *
 from datetime import datetime
 # endregion
 
-# These constants are injected by the C# backend before execution.
-# Do NOT change these placeholder names.
-DATA_FILE = "icicibank_day.csv"
-ASSET_SYMBOL = "ICICIBANK"
-
+DATA_FILE = "nifty50_day.csv"
+ASSET_SYMBOL = "NIFTY50"
 
 class CustomMarketData(PythonData):
-    """
-    Generic custom data class that loads OHLCV data from a CSV file.
-    The file path is injected as a module-level constant by the backend.
-    """
-
     def get_source(self, config, date, is_live_mode):
-        return SubscriptionDataSource(
-            f"/Lean/Data/custom/{DATA_FILE}",
-            SubscriptionTransportMedium.LOCAL_FILE
-        )
-
+        return SubscriptionDataSource(f"/Lean/Data/custom/{DATA_FILE}", SubscriptionTransportMedium.LOCAL_FILE)
     def reader(self, config, line, date, is_live_mode):
-        if not line.strip() or line.startswith("Date"):
-            return None
+        if not line.strip() or line.startswith("Date"): return None
         try:
             parts = line.split(",")
             data = CustomMarketData()
@@ -39,15 +26,7 @@ class CustomMarketData(PythonData):
         except (ValueError, IndexError):
             return None
 
-
 class RSIMeanReversion(QCAlgorithm):
-    """
-    RSI Mean Reversion Strategy.
-    Works with any asset configured via backend injection.
-    BUY when RSI drops below oversold threshold.
-    SELL when RSI rises above overbought threshold.
-    """
-
     def initialize(self):
         start_str = self.get_parameter("start-date", "2024-06-01")
         end_str = self.get_parameter("end-date", "2025-01-01")
@@ -67,14 +46,9 @@ class RSIMeanReversion(QCAlgorithm):
         self.oversold = float(self.get_parameter("oversold", "30"))
         self.overbought = float(self.get_parameter("overbought", "70"))
 
-        self.debug(f"RSI Mean Reversion initialized on {ASSET_SYMBOL}: "
-                   f"period={rsi_period}, oversold={self.oversold}, overbought={self.overbought}")
-
     def on_data(self, data):
-        if not data.contains_key(self.asset_symbol):
-            return
-        if not self.rsi.is_ready:
-            return
+        if not data.contains_key(self.asset_symbol): return
+        if not self.rsi.is_ready: return
 
         price = data[self.asset_symbol].Value
         rsi_value = self.rsi.current.value
@@ -82,7 +56,6 @@ class RSIMeanReversion(QCAlgorithm):
         if rsi_value < self.oversold and not self.portfolio.invested:
             self.set_holdings(self.asset_symbol, 1.0)
             self.debug(f"BUY at {price:.2f}, RSI={rsi_value:.2f}")
-
         elif rsi_value > self.overbought and self.portfolio.invested:
             self.liquidate(self.asset_symbol)
             self.debug(f"SELL at {price:.2f}, RSI={rsi_value:.2f}")
