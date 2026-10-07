@@ -139,18 +139,6 @@ git clone https://github.com/rishavrai563/Algorithmic-Trading-Workbench.git
 cd Algorithmic-Trading-Workbench
 ```
 
-### Run the frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Vite will print the local development address in the terminal.
-
-
-
 ### Backend
 
 
