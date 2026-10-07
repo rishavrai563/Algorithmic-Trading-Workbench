@@ -1,0 +1,11 @@
+# Visual Studio / .NET
+[Bb]in/
+[Oo]bj/
+
+# Node
+node_modules/
+
+# Script files
+commit_history.ps1
+create_commits.ps1
+dotnet-install.ps1

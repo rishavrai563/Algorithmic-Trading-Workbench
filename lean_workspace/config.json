@@ -32,9 +32,9 @@
     "asset-symbol": "NIFTY50",
     "data-file": "nifty50_day.csv",
     "resolution": "day",
-    "rsi-period": "13",
-    "oversold": "45",
-    "overbought": "70",
+    "rsi-period": "14",
+    "oversold": "39",
+    "overbought": "83",
     "stop-loss": "5",
     "take-profit": "10"
   },

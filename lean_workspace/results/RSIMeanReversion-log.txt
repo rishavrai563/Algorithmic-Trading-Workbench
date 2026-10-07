@@ -1,5 +1,2 @@
 2024-06-01 00:00:00 Launching analysis for RSIMeanReversion with LEAN Engine v2.5.0.0
-2024-08-04 20:00:00 BUY at 24055.60, RSI=40.48
-2024-09-01 20:00:00 SELL at 25278.70, RSI=70.51
-2024-10-02 20:00:00 BUY at 25250.10, RSI=44.19
-2025-01-01 19:00:00 Algorithm Id:(RSIMeanReversion) completed in 0.55 seconds at 0k data points per second. Processing total of 148 data points.
+2025-01-01 19:00:00 Algorithm Id:(RSIMeanReversion) completed in 0.68 seconds at 0k data points per second. Processing total of 148 data points.
