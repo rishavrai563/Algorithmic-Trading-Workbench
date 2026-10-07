@@ -104,21 +104,7 @@ The architecture is intended to keep the user workflow connected from strategy c
 
 ## User flow
 
-```text
-Dashboard
-   ↓
-Strategy Builder
-   ↓
-Parameters
-   ↓
-Run Backtest
-   ↓
-Backtest Results
-   ↓
-Explore Parameters
-   ↓
-Compare Strategies
-```
+![User Flow diagram showing the path from Dashboard through Strategy Builder, Parameters, Backtest, Results, and then splitting into Explore, Understand, and Compare](Documentation/assets/user_flow.png)
 
 
 ## Getting started
