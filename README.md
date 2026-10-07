@@ -10,7 +10,7 @@ The workbench helps a user move through one connected workflow:
 
 **Create Strategy → Configure Parameters → Run Backtest → View Results → Explore Variations → Compare Strategies**
 
-The main idea is simple: users should be able to understand what they are doing and what happened after a backtest without depending on many separate screens or remembering previous configurations.
+The main idea is simple: users can build strategies using visual blocks or code, run backtests, and understand the results without switching between many screens or remembering previous configurations.
 
 ## Problem statement
 
@@ -20,7 +20,7 @@ This project focuses on making that process easier to understand by providing a 
 
 ## Objectives
 
-- Make strategy creation easier through a visual interface.
+- Make strategy creation easier through code blocks.
 - Make backtesting simple to configure and run.
 - Show backtest progress and results clearly.
 - Help users explore how parameter changes affect results.
