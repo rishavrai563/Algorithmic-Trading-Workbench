@@ -7,6 +7,7 @@ import Parameters from './pages/Parameters'
 import BacktestResults from './pages/BacktestResults'
 import Explore from './pages/Explore'
 import Compare from './pages/Compare'
+import Profile from './pages/Profile/Profile'
 import LoadingBacktest from './components/LoadingBacktest'
 import { defaultStrategy, defaultStrategyCode } from './data/sampleData'
 import { fetchStrategies, fetchAllHistory } from './api/strategies'
@@ -62,12 +63,16 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/strategy" element={<StrategyBuilder />} />
+          <Route path="/strategy-builder" element={<StrategyBuilder />} />
           <Route path="/parameters" element={<Parameters />} />
           <Route path="/backtest-running" element={<LoadingBacktest />} />
           <Route path="/results" element={<BacktestResults />} />
+          <Route path="/results/:id" element={<BacktestResults />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/compare" element={<Compare />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </Layout>
     </AppContext.Provider>

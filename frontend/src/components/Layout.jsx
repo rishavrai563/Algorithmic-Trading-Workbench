@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
+import ThemeToggle from './ThemeToggle'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: '⌂' },
@@ -7,6 +8,7 @@ const links = [
   { to: '/results', label: 'Backtest Results', icon: '▥' },
   { to: '/explore', label: 'Explore', icon: '↔' },
   { to: '/compare', label: 'Compare', icon: '⇄' },
+  { to: '/profile', label: 'Profile', icon: '◉' },
 ]
 
 export default function Layout({ children }) {
@@ -35,9 +37,18 @@ export default function Layout({ children }) {
 
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumbs">Algorithmic Trading Visualization Workbench</div>
-          <div className="user-chip"><span className="avatar">R</span> Rishav Kumar</div>
-        </header>
+  <div className="topbar-left">
+    <ThemeToggle />
+    <div className="breadcrumbs">
+      Algorithmic Trading Visualization Workbench
+    </div>
+  </div>
+
+  <Link to="/profile" className="user-chip" style={{ textDecoration: 'none', color: 'inherit' }}>
+    <span className="avatar">R</span>
+    Rishav Kumar
+  </Link>
+</header>
         <div className="page-area">{children}</div>
       </main>
     </div>
