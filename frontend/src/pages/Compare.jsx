@@ -115,7 +115,7 @@ export default function Compare() {
       </div>
 
       {!hasRuns && (
-        <div className="panel" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+        <div className="panel compare-empty-note">
           <p style={{ fontSize: '16px', fontWeight: 500 }}>Run at least 2 backtests to compare real results here.</p>
           <p style={{ fontSize: '13px', marginTop: '8px' }}>The data below is sample placeholder data until you complete your first two runs.</p>
         </div>
@@ -132,9 +132,9 @@ export default function Compare() {
             <thead>
               <tr>
                 <th>Parameter</th>
-                <th style={{ color: '#2563eb' }}>{labelA}</th>
-                <th style={{ color: '#8b5cf6' }}>{labelB}</th>
-                <th>Changed?</th>
+                <th className="th-strategy-a">{labelA}</th>
+                <th className="th-strategy-b">{labelB}</th>
+                <th style={{ textAlign: 'center' }}>Changed?</th>
               </tr>
             </thead>
             <tbody>
@@ -143,12 +143,12 @@ export default function Compare() {
                 const valB = configB[key] ?? '—'
                 const changed = String(valA) !== String(valB)
                 return (
-                  <tr key={key} style={changed ? { background: '#fefce8' } : {}}>
-                    <td style={{ fontWeight: 500 }}>{key}</td>
+                  <tr key={key} className={changed ? 'changed-row' : ''}>
+                    <td className="param-name">{key}</td>
                     <td>{valA}</td>
                     <td>{valB}</td>
                     <td style={{ textAlign: 'center' }}>
-                      {changed ? <span style={{ color: '#d97706', fontWeight: 700 }}>⚡ Yes</span> : <span style={{ color: '#94a3b8' }}>—</span>}
+                      {changed ? <span className="changed-badge">⚡ Yes</span> : <span className="unchanged-badge">—</span>}
                     </td>
                   </tr>
                 )
@@ -169,8 +169,8 @@ export default function Compare() {
             <thead>
               <tr>
                 <th>Metric</th>
-                <th style={{ color: '#2563eb' }}>{labelA}</th>
-                <th style={{ color: '#8b5cf6' }}>{labelB}</th>
+                <th className="th-strategy-a">{labelA}</th>
+                <th className="th-strategy-b">{labelB}</th>
               </tr>
             </thead>
             <tbody>

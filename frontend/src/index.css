@@ -180,6 +180,13 @@ input[type="range"] { padding: 0; border: 0; }
 .compare-select { display: grid; grid-template-columns: 1fr 50px 1fr; align-items: center; gap: 10px; }
 .compare-select span { text-align: center; color: #94a3b8; font-weight: 800; }
 .comparison-table td:nth-child(2), .comparison-table td:nth-child(3), .comparison-table th:nth-child(2), .comparison-table th:nth-child(3) { text-align: right; }
+.comparison-table tr.changed-row { background: #fefce8; }
+.comparison-table .param-name { font-weight: 600; }
+.comparison-table .th-strategy-a { color: #2563eb; }
+.comparison-table .th-strategy-b { color: #7c3aed; }
+.comparison-table .changed-badge { color: #d97706; font-weight: 700; }
+.comparison-table .unchanged-badge { color: #94a3b8; }
+.compare-empty-note { text-align: center; padding: 32px; color: #64748b; }
 .dual-chart { position: relative; }
 .overlay-chart { position: absolute; inset: 0; width: 100%; height: 260px; pointer-events: none; }
 .legend-text + .chart-wrap { margin-top: 8px; }
@@ -838,6 +845,62 @@ html[data-theme="dark"] .toggle-btn.active {
   background: #0f172a;
   color: #60a5fa;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .comparison-table tr.changed-row {
+  background: rgba(234, 179, 8, 0.12) !important;
+}
+
+html[data-theme="dark"] .comparison-table tr.changed-row td {
+  color: #fef08a !important;
+}
+
+html[data-theme="dark"] .comparison-table tr.changed-row .param-name {
+  color: #fef9c3 !important;
+}
+
+html[data-theme="dark"] .comparison-table .th-strategy-a {
+  color: #60a5fa !important;
+}
+
+html[data-theme="dark"] .comparison-table .th-strategy-b {
+  color: #a78bfa !important;
+}
+
+html[data-theme="dark"] .comparison-table .changed-badge {
+  color: #fbbf24 !important;
+}
+
+html[data-theme="dark"] .compare-empty-note {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .positive {
+  color: #4ade80 !important;
+}
+
+html[data-theme="dark"] .negative {
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .grid-line {
+  stroke: #1e293b;
+}
+
+html[data-theme="dark"] .chart-line {
+  stroke: #3b82f6;
+}
+
+html[data-theme="dark"] .chart-benchmark {
+  stroke: #a78bfa;
+}
+
+html[data-theme="dark"] .legend-line.main {
+  background: #3b82f6;
+}
+
+html[data-theme="dark"] .legend-line.bench {
+  background: #a78bfa;
 }
 
 html[data-theme="dark"] .theme-toggle {
