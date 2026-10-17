@@ -101,9 +101,21 @@ input, select { border: 1px solid #cbd5e1; border-radius: 7px; background: #fff;
 .info-grid span, .info-grid strong { display: block; }
 .info-grid span { color: #94a3b8; font-size: 11px; }
 .info-grid strong { font-size: 13px; margin-top: 5px; }
-.compiled-rule { border-left: 4px solid; padding: 11px 12px; border-radius: 6px; margin-top: 10px; font-size: 13px; font-weight: 700; background: #f8fafc; }
-.buy-rule { border-color: #16a34a; }
-.sell-rule { border-color: #dc2626; }
+.compiled-rule {
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid;
+  padding: 11px 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #f8fafc;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+.buy-rule { border-left-color: #16a34a; background: #f0fdf4; color: #166534; }
+.sell-rule { border-left-color: #dc2626; background: #fef2f2; color: #991b1b; }
+.compiled-rule .doc-tooltip-wrapper { border-bottom-color: currentColor; }
 .sliders-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
 input[type="range"] { padding: 0; border: 0; }
 .range-value { color: #2563eb; font-weight: 800; font-size: 12px; }
@@ -738,6 +750,94 @@ html[data-theme="dark"] .step-row,
 html[data-theme="dark"] .login-flow {
   background: #1e293b !important;
   border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .compiled-rule {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  border-left-width: 4px !important;
+}
+
+html[data-theme="dark"] .buy-rule {
+  border-left-color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #86efac !important;
+}
+
+html[data-theme="dark"] .sell-rule {
+  border-left-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .eyebrow {
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] .range-value {
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] input[type="range"] {
+  background: transparent !important;
+  border: none !important;
+  accent-color: #3b82f6;
+}
+
+html[data-theme="dark"] .button.secondary {
+  border-color: #475569 !important;
+}
+
+html[data-theme="dark"] .button.secondary:hover {
+  background: #1f2937 !important;
+  border-color: #64748b !important;
+}
+
+html[data-theme="dark"] th {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+html[data-theme="dark"] td {
+  border-color: #334155 !important;
+}
+
+html[data-theme="dark"] tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html[data-theme="dark"] .doc-tooltip-popup {
+  background: #0f172a;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .doc-tooltip-popup::after {
+  border-color: #0f172a transparent transparent transparent;
+}
+
+html[data-theme="dark"] .doc-tooltip-popup strong {
+  color: #38bdf8 !important;
+}
+
+html[data-theme="dark"] .doc-tooltip-popup p {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .mode-toggle {
+  background: #1e293b;
+}
+
+html[data-theme="dark"] .toggle-btn {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .toggle-btn.active {
+  background: #0f172a;
+  color: #60a5fa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 html[data-theme="dark"] .theme-toggle {
