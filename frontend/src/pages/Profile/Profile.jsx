@@ -245,7 +245,7 @@ export default function Profile() {
 
       {/* Portfolio */}
       {tab === "portfolio" && (
-        <section role="tabpanel" id="panel-portfolio" aria-labelledby="tab-portfolio" className="panel">
+        <section role="tabpanel" id="panel-portfolio" aria-labelledby="tab-portfolio" className="pf-panel">
           <div className="alloc" aria-label="Allocation by holding">
             {[...rows].sort((a, b) => b.value - a.value).map((r, i) => (
               <span
@@ -293,7 +293,7 @@ export default function Profile() {
 
       {/* Orders */}
       {tab === "orders" && (
-        <section role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" className="panel">
+        <section role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" className="pf-panel">
           <div className="filters" role="group" aria-label="Filter orders by status">
             {ORDER_FILTERS.map((f) => (
               <button
@@ -333,7 +333,7 @@ export default function Profile() {
 
       {/* Winners */}
       {tab === "winners" && (
-        <section role="tabpanel" id="panel-winners" aria-labelledby="tab-winners" className="panel">
+        <section role="tabpanel" id="panel-winners" aria-labelledby="tab-winners" className="pf-panel">
           <div className="win-grid">
             <RankList title="Top winners" items={winners} maxAbs={maxAbs} />
             <RankList title="Lagging behind" items={losers} maxAbs={maxAbs} />
@@ -347,7 +347,7 @@ export default function Profile() {
 
       {/* Strategies */}
       {tab === "strategies" && (
-        <section role="tabpanel" id="panel-strategies" aria-labelledby="tab-strategies" className="panel">
+        <section role="tabpanel" id="panel-strategies" aria-labelledby="tab-strategies" className="pf-panel">
           <div className="strat-grid">
             {strategies.map((s) => (
               <article key={s.id} className="strat">

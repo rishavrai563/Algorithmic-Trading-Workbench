@@ -1,5 +1,7 @@
-.profile {
-  --bg: #f6f8fa;
+/* ---------- tokens: light theme (default & explicit data-theme="light") ---------- */
+.profile,
+html[data-theme="light"] .profile {
+  --bg: #f5f7fb;
   --surface: #ffffff;
   --ink: #0f1b2d;
   --muted: #667085;
@@ -8,7 +10,7 @@
   --gain-soft: #e3f5ee;
   --loss: #d92d4a;
   --loss-soft: #fdebee;
-  --accent: #2f4bd8;
+  --accent: #2563eb;
   --warn: #9a6700;
   --warn-soft: #fff4d6;
 
@@ -29,10 +31,27 @@
   box-sizing: inherit;
 }
 
+/* ---------- tokens: dark theme (explicit data-theme="dark") ---------- */
+html[data-theme="dark"] .profile {
+  --bg: #0f172a;
+  --surface: #111827;
+  --ink: #e8edf4;
+  --muted: #8d99ab;
+  --line: #263040;
+  --gain: #36d19a;
+  --gain-soft: #123629;
+  --loss: #ff6f86;
+  --loss-soft: #3a1820;
+  --accent: #7d93ff;
+  --warn: #f0c24b;
+  --warn-soft: #3a2e0f;
+}
+
+/* ---------- tokens: system dark preference (fallback only if theme not set to light) ---------- */
 @media (prefers-color-scheme: dark) {
-  .profile {
-    --bg: #0d1219;
-    --surface: #151c26;
+  html:not([data-theme="light"]) .profile {
+    --bg: #0f172a;
+    --surface: #111827;
     --ink: #e8edf4;
     --muted: #8d99ab;
     --line: #263040;
@@ -325,8 +344,15 @@
   border-bottom-color: var(--accent);
 }
 
+.profile .pf-panel,
 .profile .panel {
   padding-top: 20px;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* ---------- holdings ---------- */
@@ -366,7 +392,9 @@
   font-size: 0.8125rem;
   color: var(--muted);
   padding: 0;
+  border-top: none;
   border-bottom: 1px solid var(--line);
+  background: var(--surface);
   text-align: left;
 }
 
@@ -394,6 +422,7 @@
 
 .profile td {
   padding: 12px 16px;
+  border-top: none;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
   font-size: 0.9rem;
