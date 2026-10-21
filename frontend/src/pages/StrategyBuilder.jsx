@@ -17,6 +17,7 @@ export default function StrategyBuilder() {
   const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
   const [showAssetDropdown, setShowAssetDropdown] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
   const assetInputRef = useRef(null)
   const editorRef = useRef(null)
   const monacoRef = useRef(null)
@@ -209,17 +210,17 @@ export default function StrategyBuilder() {
           {saveStatus === 'error' && <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>✕ Save failed</span>}
           
           {activeStrategyId && (
-            <button className="button secondary" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={confirmDelete}>🗑 Delete</button>
+            <button className="button secondary" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={confirmDelete} aria-label="Delete strategy">🗑 Delete</button>
           )}
-          <button className="button secondary" onClick={handleSave}>💾 Save</button>
-          <button className="button secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
+          <button className="button secondary" onClick={handleSave} aria-label="Save strategy">💾 Save</button>
+          <button className="button secondary" onClick={() => navigate('/dashboard')} aria-label="Back to Dashboard">Back to Dashboard</button>
         </div>
       </div>
 
       <div className="builder-controls">
         <div className="mode-toggle">
-          <button className={`toggle-btn ${mode === 'CODE' ? 'active' : ''}`} onClick={() => setMode('CODE')}>CODE</button>
-          <button className={`toggle-btn ${mode === 'VISUAL' ? 'active' : ''}`} onClick={() => setMode('VISUAL')}>VISUAL BLOCKS</button>
+          <button className={`toggle-btn ${mode === 'CODE' ? 'active' : ''}`} onClick={() => setMode('CODE')} aria-label="Switch to code editor">CODE</button>
+          <button className={`toggle-btn ${mode === 'VISUAL' ? 'active' : ''}`} onClick={() => setMode('VISUAL')} aria-label="Switch to visual blocks editor">VISUAL BLOCKS</button>
         </div>
       </div>
 
@@ -296,6 +297,7 @@ export default function StrategyBuilder() {
               onFocus={() => setShowAssetDropdown(true)}
               placeholder="Type ticker symbol..."
               autoComplete="off"
+              aria-label="Search for stock ticker"
             />
             {showAssetDropdown && supportedAssets.length > 0 && (
               <div style={{
@@ -332,7 +334,7 @@ export default function StrategyBuilder() {
           <label>Start Date<input type="date" value={draft.startDate} onChange={(e) => update('startDate', e.target.value)} /></label>
           <label>End Date<input type="date" value={draft.endDate} onChange={(e) => update('endDate', e.target.value)} /></label>
           <div className="form-actions" style={{ marginTop: 'auto' }}>
-            <button className="button secondary" onClick={() => { setDraft(strategy); setDraftCode(strategyCode); }}>Reset</button>
+            <button className="button secondary" onClick={() => setShowResetModal(true)} aria-label="Reset to last saved">Reset</button>
             <button className="button primary" onClick={handleContinue}>Continue to Parameters →</button>
           </div>
         </aside>
@@ -356,6 +358,29 @@ export default function StrategyBuilder() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="button secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
               <button className="button" style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none' }} onClick={handleDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: '#fff', padding: '24px', borderRadius: '12px',
+            width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, color: '#0f172a', fontSize: '18px', fontWeight: 600 }}>Reset Strategy</h3>
+            <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.5' }}>
+              This will discard all unsaved changes to <strong>"{draft.name}"</strong> and revert to the last saved version.<br/><br/>
+              Are you sure you want to continue?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="button secondary" onClick={() => setShowResetModal(false)}>Cancel</button>
+              <button className="button primary" onClick={() => { setDraft(strategy); setDraftCode(strategyCode); setShowResetModal(false); }}>Reset</button>
             </div>
           </div>
         </div>
